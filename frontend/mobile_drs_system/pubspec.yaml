@@ -13,6 +13,7 @@ dependencies:
     git:
       url: https://github.com/giandifra/arcore_flutter_plugin.git
   vector_math: ^2.1.4
+  sensors_plus: ^3.0.2
 
 dev_dependencies:
   flutter_test:
