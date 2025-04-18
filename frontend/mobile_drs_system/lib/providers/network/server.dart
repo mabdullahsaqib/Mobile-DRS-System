@@ -12,12 +12,12 @@ class ServerProvider with ChangeNotifier {
   bool _isRunning = false;
 
   bool get isRunning => _isRunning;
-  SecureServerSocket? _serverSocket;
+  ServerSocket? _serverSocket;
 
 //Give IP Address of the server
   var _ipAddress = "";
   String get ipAddress => _ipAddress;
-  final List<SecureSocket> _connectedClients = [];
+  final List<Socket> _connectedClients = [];
 
   Future<void> startServer() async {
     if (_isRunning) {
@@ -28,8 +28,7 @@ class ServerProvider with ChangeNotifier {
     requestPermissions();
     final info = NetworkInfo();
     _ipAddress = await info.getWifiIP() ?? "";
-    _serverSocket = await SecureServerSocket.bind(
-        '0.0.0.0', 4040, SecurityContext.defaultContext);
+    _serverSocket = await ServerSocket.bind('0.0.0.0', 4040);
     print('Server listening on port ${_serverSocket?.port}');
 
     _serverSocket?.listen((client) {

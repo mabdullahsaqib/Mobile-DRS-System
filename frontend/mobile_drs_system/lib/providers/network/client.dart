@@ -9,7 +9,7 @@ class ClientProvider with ChangeNotifier {
   Uint8List? get receivedData => _receivedData;
   bool get isConnected => _isConnected;
 
-  SecureSocket? _socket;
+  Socket? _socket;
   Future<void> connect(String IP) async {
     if (_isConnected) {
       print('Already connected to server');
@@ -25,8 +25,8 @@ class ClientProvider with ChangeNotifier {
     try {
       //Connect to the server using SecureSocket
       print('Connecting to server...');
-      _socket = await SecureSocket.connect(IP, 4040,
-          timeout: const Duration(seconds: 5));
+      _socket =
+          await Socket.connect(IP, 4040, timeout: const Duration(seconds: 5));
       print('Connected to server');
     } catch (e) {
       print('Connection failed: $e');
