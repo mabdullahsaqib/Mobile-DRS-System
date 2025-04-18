@@ -1,4 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:mobile_drs_system/controllers/connection.dart';
+import 'package:mobile_drs_system/providers/network/server.dart';
+import 'package:provider/provider.dart';
 
 class MasterScreen extends StatefulWidget {
   const MasterScreen({super.key});
@@ -8,13 +13,23 @@ class MasterScreen extends StatefulWidget {
 }
 
 class MasterScreenState extends State<MasterScreen> {
-  String code = "ABC123"; // hardcoded for now
   String input = "";
   String sentData = "";
 
   final _controller = TextEditingController();
 
-  void handleSubmit() {
+  void handleSubmit(context) {
+    if (input.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter some data")),
+      );
+      return;
+    }
+    final serverProvider = Provider.of<ServerProvider>(context, listen: false);
+    serverProvider.sendMessage(input);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Data sent successfully")),
+    );
     setState(() {
       sentData = input;
       _controller.clear();
@@ -23,6 +38,10 @@ class MasterScreenState extends State<MasterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final connectionController = context.watch<ConnectionController>();
+    final serverProvider = context.watch<ServerProvider>();
+    connectionController
+        .startServer(); // Start the server when the screen is built
     return Scaffold(
       appBar: AppBar(title: const Text("Master (Bowler's End)")),
       body: Padding(
@@ -30,12 +49,26 @@ class MasterScreenState extends State<MasterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text("Connection Code", style: TextStyle(fontSize: 20)),
             const SizedBox(height: 10),
-            Text(code,
-                style:
-                    const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 30),
+            serverProvider.isRunning
+                ? Text("Server is running on IP: ${serverProvider.ipAddress}",
+                    style: const TextStyle(fontSize: 18))
+                : ElevatedButton(
+                    onPressed: () {
+                      connectionController
+                          .startServer()
+                          .then((_) {})
+                          .catchError((error) {
+                        print(error);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text("Error starting server: $error")),
+                        );
+                      });
+                    },
+                    child: const Text("Start Server"),
+                  ),
+            const SizedBox(height: 10),
             TextField(
               controller: _controller,
               decoration: const InputDecoration(
@@ -46,7 +79,7 @@ class MasterScreenState extends State<MasterScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: handleSubmit,
+              onPressed: () => handleSubmit(context),
               child: const Text("Send to Secondary"),
             ),
             const SizedBox(height: 30),

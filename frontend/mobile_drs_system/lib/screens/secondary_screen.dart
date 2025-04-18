@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_drs_system/controllers/connection.dart';
+import 'package:mobile_drs_system/providers/network/client.dart';
+import 'package:provider/provider.dart';
 
 class SecondaryScreen extends StatefulWidget {
   const SecondaryScreen({super.key});
@@ -8,36 +11,56 @@ class SecondaryScreen extends StatefulWidget {
 }
 
 class SecondaryScreenState extends State<SecondaryScreen> {
-  final _codeController = TextEditingController();
   String receivedData = "(waiting for data...)";
-
+  String ipAddress = "";
+  final _controller = TextEditingController();
   @override
   Widget build(BuildContext context) {
+    final connectionController = context.watch<ConnectionController>();
+    final clientProvider = context.watch<ClientProvider>();
+    receivedData = clientProvider.receivedData != null
+        ? String.fromCharCodes(clientProvider.receivedData!)
+        : "(waiting for data...)";
     return Scaffold(
       appBar: AppBar(title: const Text("Secondary (Leg Side)")),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: Center(
         child: Column(
           children: [
-            const Text("Enter Connection Code", style: TextStyle(fontSize: 18)),
             const SizedBox(height: 10),
-            TextField(
-              controller: _codeController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "e.g. ABC123",
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // For now we simulate the "connection"
-                setState(() {
-                  receivedData = "Connected! Waiting for input...";
-                });
-              },
-              child: const Text("Connect"),
-            ),
+            clientProvider.isConnected
+                ? const Text("Connected")
+                : Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: TextField(
+                          decoration: const InputDecoration(
+                            labelText: "Enter IP Address (e.g 10.2.0.2)",
+                            border: OutlineInputBorder(),
+                          ),
+                          controller: _controller,
+                          onChanged: (value) {
+                            ipAddress = value;
+                          },
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          connectionController
+                              .connectToServer(ipAddress)
+                              .then((_) {})
+                              .catchError((error) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      "Error connecting to server: $error")),
+                            );
+                          });
+                        },
+                        child: const Text("Connect"),
+                      ),
+                    ],
+                  ),
             const SizedBox(height: 30),
             const Text("Received Data:", style: TextStyle(fontSize: 18)),
             Text(receivedData,
