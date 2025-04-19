@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.mobile_drs_system" // Make sure to set this to your app’s namespace
-    compileSdk = 34  // Use SDK 34 to match ARCore's requirements
+    compileSdk = 35  // Use SDK 34 to match ARCore's requirements
 
     defaultConfig {
         applicationId = "com.example.mobile_drs_system"
@@ -31,6 +31,9 @@ android {
     buildTypes {
     getByName("release") {
         signingConfig = signingConfigs.getByName("debug")
+        isMinifyEnabled = false
+        isShrinkResources = false
+        
     }
 }
 
