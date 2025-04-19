@@ -1,8 +1,9 @@
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:mobile_drs_system/models/status.dart';
+import 'package:mobile_drs_system/models/command_type.dart';
+import 'package:mobile_drs_system/utils/utils.dart';
 
 class ClientProvider with ChangeNotifier {
   bool _isConnected = false;
@@ -26,21 +27,35 @@ class ClientProvider with ChangeNotifier {
 
     try {
       //Connect to the server using SecureSocket
-      //print('Connecting to server...');
+      print('Connecting to server...');
       _socket =
           await Socket.connect(IP, 4040, timeout: const Duration(seconds: 5));
-      //print('Connected to server');
+      _socket?.setOption(SocketOption.tcpNoDelay, true);
+      print('Connected to server');
     } catch (e) {
-      //print('Connection failed: $e');
+      print('Connection failed: $e');
       throw Exception('Connection failed: $e');
     }
     // Listen for incoming messages
-    _socket?.listen((data) {
+    final _buffer = StringBuffer();
+
+    _socket?.listen((data) async {
       String message = String.fromCharCodes(data);
-      _receivedData = json.decode(message);
-      notifyListeners();
+      _buffer.write(message);
+
+      try {
+        // Try to parse the buffer content
+
+        _receivedData = await parseJsonInIsolate(_buffer.toString());
+        // If successful, clear the buffer
+        _buffer.clear();
+        print('Received data: $_receivedData');
+        notifyListeners();
+      } catch (e) {
+        // If parsing fails, we have incomplete data - wait for more
+        debugPrint('Received partial data, waiting for more...');
+      }
     }, onDone: () {
-      // Handle disconnection
       _isConnected = false;
       notifyListeners();
     });
@@ -57,19 +72,28 @@ class ClientProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void sendJSON(Map<String, dynamic> message) {
+  void sendJSON(Map<String, dynamic> message, {Function? callback}) {
     if (_socket == null) return;
     // Convert the message to bytes and send it
-    String jsonString = json.encode(message);
-    _socket?.write(jsonString);
-    notifyListeners();
+    encodeJsonInIsolate(message).then((jsonString) {
+      debugPrint('Sending data: $jsonString');
+      _socket?.write(jsonString);
+      if (callback != null) {
+        callback();
+      }
+    });
   }
 
   void sendMessage(String message) {
     Map<String, dynamic> jsonMessage = {
-      'status': Status.sendString,
+      'type': CommandType.sendString.name,
       'message': message,
     };
     sendJSON(jsonMessage);
+  }
+
+  void clearReceivedData() {
+    _receivedData = null;
+    notifyListeners();
   }
 }

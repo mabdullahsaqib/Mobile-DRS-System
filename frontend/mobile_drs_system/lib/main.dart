@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_drs_system/providers/camera.dart';
 import 'package:mobile_drs_system/controllers/connection.dart';
 import 'package:mobile_drs_system/providers/network/client.dart';
 import 'package:mobile_drs_system/providers/network/server.dart';
@@ -13,6 +14,7 @@ void main() {
         create: (_) => ConnectionController(
             Provider.of<ServerProvider>(_, listen: false),
             Provider.of<ClientProvider>(_, listen: false))),
+    ChangeNotifierProvider(create: (_) => CameraService()),
   ], child: const MainApp()));
 }
 

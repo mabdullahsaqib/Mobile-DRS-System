@@ -1,14 +1,9 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:mobile_drs_system/models/status.dart';
+import 'package:mobile_drs_system/models/command_type.dart';
+import 'package:mobile_drs_system/utils/utils.dart';
 import 'package:network_info_plus/network_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
-
-Future<void> requestPermissions() async {
-  await Permission.location.request();
-}
 
 class ServerProvider with ChangeNotifier {
   bool _isRunning = false;
@@ -31,27 +26,43 @@ class ServerProvider with ChangeNotifier {
       return;
     }
     //print('Starting server...');
-    requestPermissions();
     final info = NetworkInfo();
     _ipAddress = await info.getWifiIP() ?? "";
     _serverSocket = await ServerSocket.bind('0.0.0.0', 4040);
     // print('Server listening on port ${_serverSocket?.port}');
 
     _serverSocket?.listen((client) {
+      if (_connectedClient != null) {
+        client.close(); // Close the new client if another is already connected
+        return;
+      }
       _connectedClient = client;
-      client.listen((data) {
-        String dataString = String.fromCharCodes(data);
-        _receivedData = json.decode(dataString);
-        notifyListeners();
-        // print('Received data: ${String.fromCharCodes(data)}');
+      print('Client connected: ${client.remoteAddress.address}');
+      final buffer = StringBuffer();
+      client.listen((data) async {
+        String message = String.fromCharCodes(data);
+        buffer.write(message);
+
+        try {
+          // Try to parse the buffer content
+          _receivedData = await parseJsonInIsolate(buffer.toString());
+          // If successful, clear the buffer
+          buffer.clear();
+          debugPrint('Received data: $_receivedData');
+          notifyListeners();
+        } catch (e) {
+          // If parsing fails, we have incomplete data - wait for more
+          debugPrint('Received partial data, waiting for more...');
+        }
       }, onError: (error) {
         // Handle error
-        //print('Error: $error');
+        debugPrint('Error: $error');
       }, onDone: () {
         _connectedClient?.close();
         _connectedClient = null;
       });
     });
+
     _isRunning = true;
     notifyListeners();
   }
@@ -70,15 +81,22 @@ class ServerProvider with ChangeNotifier {
 
   void sendJSON(Map<String, dynamic> message) {
     if (_serverSocket != null) {
-      _connectedClient?.write(json.encode(message));
+      encodeJsonInIsolate(message).then((jsonString) {
+        _connectedClient?.write(jsonString);
+      });
     }
   }
 
   void sendMessage(String message) {
     Map<String, dynamic> data = {
-      'status': Status.sendString,
+      'type': CommandType.sendString.name,
       'message': message,
     };
     sendJSON(data);
+  }
+
+  void clearReceivedData() {
+    _receivedData = null;
+    notifyListeners();
   }
 }
