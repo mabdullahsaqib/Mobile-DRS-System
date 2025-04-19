@@ -1,40 +1,43 @@
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
+import 'package:mobile_drs_system/models/status.dart';
 
 class ClientProvider with ChangeNotifier {
   bool _isConnected = false;
-  Uint8List? _receivedData;
-  Uint8List? get receivedData => _receivedData;
+  Map<String, dynamic>? _receivedData;
+  Map<String, dynamic> get receivedData =>
+      _receivedData == null ? {} : _receivedData!;
   bool get isConnected => _isConnected;
 
   Socket? _socket;
   Future<void> connect(String IP) async {
     if (_isConnected) {
-      print('Already connected to server');
+      //print('Already connected to server');
       return;
     }
 
     //IF IP address isnt valid, throw an error
     if (InternetAddress.tryParse(IP) == null) {
-      print('Invalid IP address');
+      //print('Invalid IP address');
       throw Exception('Invalid IP address');
     }
 
     try {
       //Connect to the server using SecureSocket
-      print('Connecting to server...');
+      //print('Connecting to server...');
       _socket =
           await Socket.connect(IP, 4040, timeout: const Duration(seconds: 5));
-      print('Connected to server');
+      //print('Connected to server');
     } catch (e) {
-      print('Connection failed: $e');
+      //print('Connection failed: $e');
       throw Exception('Connection failed: $e');
     }
     // Listen for incoming messages
     _socket?.listen((data) {
-      _receivedData = data;
+      String message = String.fromCharCodes(data);
+      _receivedData = json.decode(message);
       notifyListeners();
     }, onDone: () {
       // Handle disconnection
@@ -54,12 +57,19 @@ class ClientProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void sendMessage(String message) {
+  void sendJSON(Map<String, dynamic> message) {
     if (_socket == null) return;
     // Convert the message to bytes and send it
-    final data = Uint8List.fromList(message.codeUnits);
-    _socket?.write(data);
-    print('Sent: $message');
+    String jsonString = json.encode(message);
+    _socket?.write(jsonString);
     notifyListeners();
+  }
+
+  void sendMessage(String message) {
+    Map<String, dynamic> jsonMessage = {
+      'status': Status.sendString,
+      'message': message,
+    };
+    sendJSON(jsonMessage);
   }
 }

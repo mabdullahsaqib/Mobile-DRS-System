@@ -13,7 +13,7 @@ void main() {
         create: (_) => ConnectionController(
             Provider.of<ServerProvider>(_, listen: false),
             Provider.of<ClientProvider>(_, listen: false))),
-  ], child: MainApp()));
+  ], child: const MainApp()));
 }
 
 class MainApp extends StatelessWidget {

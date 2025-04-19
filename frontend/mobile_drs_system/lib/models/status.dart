@@ -1,5 +1,5 @@
 enum Status {
-  StartRecording, //Sent from server to client
-  SendRecording, //Sent from client to server
-  SendString, //Sent from client to server
+  startRecording, //Sent from server to client
+  sendRecording, //Sent from client to server
+  sendString, //Sent from client to server
 }

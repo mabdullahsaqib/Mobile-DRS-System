@@ -18,8 +18,8 @@ class SecondaryScreenState extends State<SecondaryScreen> {
   Widget build(BuildContext context) {
     final connectionController = context.watch<ConnectionController>();
     final clientProvider = context.watch<ClientProvider>();
-    receivedData = clientProvider.receivedData != null
-        ? String.fromCharCodes(clientProvider.receivedData!)
+    receivedData = clientProvider.receivedData.isNotEmpty
+        ? clientProvider.receivedData["message"]
         : "(waiting for data...)";
     return Scaffold(
       appBar: AppBar(title: const Text("Secondary (Leg Side)")),

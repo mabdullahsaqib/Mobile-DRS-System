@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
 
 import 'package:flutter/material.dart';
 import 'package:mobile_drs_system/models/status.dart';
@@ -77,7 +76,7 @@ class ServerProvider with ChangeNotifier {
 
   void sendMessage(String message) {
     Map<String, dynamic> data = {
-      'status': Status.SendString,
+      'status': Status.sendString,
       'message': message,
     };
     sendJSON(data);

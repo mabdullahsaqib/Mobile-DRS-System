@@ -29,7 +29,7 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => SecondaryScreen()),
+                  MaterialPageRoute(builder: (_) => const SecondaryScreen()),
                 );
               },
             ),
