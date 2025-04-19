@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'master_screen.dart';
 import 'secondary_screen.dart';
 import '../widgets/role_button.dart';
-import 'ar_screen.dart'; // Make sure to import your AR screen here
-import 'accelerometer_test_screen.dart';
+import 'ar_screen.dart';
+import 'kalan_filter.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
