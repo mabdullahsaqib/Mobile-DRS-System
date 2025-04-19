@@ -68,7 +68,8 @@ class CameraService with ChangeNotifier {
     final file = await _controller!.stopVideoRecording();
     _isRecording = false;
 
-    final directory = await getApplicationDocumentsDirectory();
+    var directory = await getExternalStorageDirectory();
+    directory ??= await getApplicationDocumentsDirectory();
     path = join(directory.path, '${DateTime.now().millisecondsSinceEpoch}.mp4');
 
     if (_recordingCompleter != null && !_recordingCompleter!.isCompleted) {

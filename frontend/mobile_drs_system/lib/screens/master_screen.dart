@@ -26,7 +26,7 @@ class MasterScreenState extends State<MasterScreen> {
       );
       return;
     }
-    final serverProvider = Provider.of<ServerProvider>(context, listen: false);
+    final serverProvider = context.read<ServerProvider>();
     serverProvider.sendJSON({
       "type": CommandType.sendString.name,
       "data": input,
