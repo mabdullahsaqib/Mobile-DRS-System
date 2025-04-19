@@ -1,10 +1,10 @@
 from fastapi import FastAPI
-from app.modules.camera.router import router as camera_router
-from app.modules.ball_tracking.router import router as ball_tracking_router
-from app.modules.edge_detection.router import router as edge_detection_router
-from app.modules.trajectory_analysis.router import router as trajectory_analysis_router
-from app.modules.decision_making.router import router as decision_making_router
-from app.modules.stream_analysis.router import router as stream_analysis_router
+from modules.camera.router import router as camera_router
+from modules.ball_tracking.router import router as ball_tracking_router
+from modules.edge_detection.router import router as edge_detection_router
+from modules.trajectory_analysis.router import router as trajectory_analysis_router
+from modules.decision_making.router import router as decision_making_router
+from modules.stream_analysis.router import router as stream_analysis_router
 
 app = FastAPI()
 
