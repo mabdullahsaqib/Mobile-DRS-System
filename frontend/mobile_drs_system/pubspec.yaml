@@ -1,6 +1,6 @@
 name: mobile_drs_system
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0
 
 environment:
@@ -9,6 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  arcore_flutter_plugin:
+    git:
+      url: https://github.com/giandifra/arcore_flutter_plugin.git
+  vector_math: ^2.1.4
+  sensors_plus: ^6.1.1
+  geolocator: ^10.0.0
   basic_utils: ^5.8.2
   crypto: ^3.0.6
   provider: ^6.1.4
@@ -22,7 +29,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true
