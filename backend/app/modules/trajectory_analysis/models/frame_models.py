@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 from typing import List
+from datetime import datetime
+from .frame_models import Position3D, Velocity3D
 
 class Position3D(BaseModel):
     x: float
@@ -17,7 +19,7 @@ class Spin(BaseModel):
 
 
 class HistoricalPosition(Position3D):
-    timestamp: str
+    timestamp: datetime
 
 
 class BallData(BaseModel):
@@ -34,3 +36,13 @@ class TrajectoryData(BaseModel):
     match_id: str
     edge_detected: bool
     ball_data: BallData
+
+
+class TrajectoryResult(BaseModel):
+    frame_id: int
+    match_id: str
+    processing_timestamp: datetime
+    predicted_trajectory: List[TrajectoryPoint]
+    stumps_hit: bool
+    decision_confidence: float
+    notes: List[str]
