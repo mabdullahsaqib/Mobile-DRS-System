@@ -7,6 +7,8 @@ import 'package:mobile_drs_system/models/command_type.dart';
 import 'package:mobile_drs_system/providers/network/server.dart';
 import 'package:mobile_drs_system/utils/utils.dart';
 import 'package:provider/provider.dart';
+import '../providers/video_save.dart';
+import 'video_player_screen.dart';
 
 class MasterWaitingScreen extends StatefulWidget {
   const MasterWaitingScreen({super.key});
@@ -20,7 +22,11 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
   String status = "Waiting for file from secondary...";
   bool recieved = false;
 
-  Future<void> recieveRecording(Map<String, dynamic> data) async {
+  late VideoSaveDataProvider _videoSaveDataProvider;
+
+  Future<String?> recieveRecording(Map<String, dynamic> data) async {
+    String? saveFilePath;
+
     //We got the recording from the secondary device as a base64 string that is an mp4 file with the filename, decode it and save it with the filename
     Uint8List bytes = await decodeBase64InIsolate(data["videoBase64"]);
     String filename = data["filename"];
@@ -41,13 +47,22 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
       },
       onSuccess: (uri, filePath) {
         // File saved successfully
+        _videoSaveDataProvider.setSecondaryVideoPath(filePath);
+        if (_videoSaveDataProvider.mainVideoPath.isNotEmpty) {
+          Navigator.push(context, MaterialPageRoute(builder: (context) {
+            return VideoPlayerScreen(
+              mainVideoPath: _videoSaveDataProvider.mainVideoPath,
+              secondaryVideoPath: filePath,
+            );
+          }));
+        }
         scaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(content: Text("Recording from device 2 saved: $filePath")),
         );
       },
     );
 
-    return;
+    return saveFilePath;
   }
 
   void processRecievedData() {
@@ -67,6 +82,12 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
         default:
       }
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _videoSaveDataProvider = Provider.of<VideoSaveDataProvider>(context);
   }
 
   @override

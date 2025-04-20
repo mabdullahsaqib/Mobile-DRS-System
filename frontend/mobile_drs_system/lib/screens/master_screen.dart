@@ -6,6 +6,8 @@ import 'package:mobile_drs_system/models/command_type.dart';
 import 'package:mobile_drs_system/providers/network/server.dart';
 import 'package:mobile_drs_system/screens/master_waiting_screen.dart';
 import 'package:provider/provider.dart';
+import '../providers/video_save.dart';
+import 'video_player_screen.dart';
 
 class MasterScreen extends StatefulWidget {
   const MasterScreen({super.key});
@@ -22,6 +24,8 @@ class MasterScreenState extends State<MasterScreen> {
 
   late ServerProvider _serverProvider; // For methods/dispose
   late CameraService _cameraService; // For methods/dispose
+  late VideoSaveDataProvider _videoSaveDataProvider; // For methods/dispose
+  bool isSecondaryVideoSaved = false; // to go to video player screen
 
   void handleSubmit(BuildContext context) {
     if (input.isEmpty) {
@@ -57,6 +61,17 @@ class MasterScreenState extends State<MasterScreen> {
               builder: (context) => const MasterWaitingScreen(),
             ));
       }
+      _videoSaveDataProvider.setMainVideoPath(path);
+      if (_videoSaveDataProvider.secondaryVideoPath.isNotEmpty && mounted) {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VideoPlayerScreen(
+                mainVideoPath: _videoSaveDataProvider.mainVideoPath,
+                secondaryVideoPath: _videoSaveDataProvider.secondaryVideoPath,
+              ),
+            ));
+      }
     }).catchError((error) {
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error: $error")),
@@ -90,6 +105,10 @@ class MasterScreenState extends State<MasterScreen> {
     super.initState();
     _serverProvider = Provider.of<ServerProvider>(context, listen: false);
     _cameraService = Provider.of<CameraService>(context, listen: false);
+    _videoSaveDataProvider =
+        Provider.of<VideoSaveDataProvider>(context, listen: false);
+    isSecondaryVideoSaved =
+        _videoSaveDataProvider.secondaryVideoPath.isNotEmpty;
     _cameraService.initialize();
   }
 
