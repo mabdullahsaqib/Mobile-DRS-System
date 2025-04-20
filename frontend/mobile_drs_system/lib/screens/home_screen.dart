@@ -54,7 +54,7 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const SensorFusionPositionScreen()),
+                      builder: (_) => SensorFusionPositionScreen()),
                 );
               },
             ),

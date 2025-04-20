@@ -10,24 +10,27 @@ class ArScreen extends StatefulWidget {
 }
 
 class _ArScreenState extends State<ArScreen> {
-  late ArCoreController arCoreController;
+  ArCoreController? arCoreController;
 
   void _onArCoreViewCreated(ArCoreController controller) {
     arCoreController = controller;
 
-    final material = ArCoreMaterial(color: Colors.green);
-    final sphere = ArCoreSphere(materials: [material], radius: 0.1);
-    final node = ArCoreNode(
-      shape: sphere,
-      position: vector.Vector3(0, 0, -1), // 1 meter in front
-    );
+    // Delay the addition of ARCore nodes to ensure OpenGL context is ready
+    Future.delayed(Duration(milliseconds: 500), () {
+      final material = ArCoreMaterial(color: Colors.green);
+      final sphere = ArCoreSphere(materials: [material], radius: 0.1);
+      final node = ArCoreNode(
+        shape: sphere,
+        position: vector.Vector3(0, 0, -1), // 1 meter in front
+      );
 
-    arCoreController.addArCoreNode(node);
+      arCoreController?.addArCoreNode(node);
+    });
   }
 
   @override
   void dispose() {
-    arCoreController.dispose();
+    arCoreController?.dispose();
     super.dispose();
   }
 

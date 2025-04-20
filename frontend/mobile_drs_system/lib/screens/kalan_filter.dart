@@ -2,254 +2,220 @@ import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'dart:async';
 import 'dart:math';
-import 'package:vector_math/vector_math_64.dart'; // Import vector_math for Vector3 and Vector2
+import 'package:vector_math/vector_math_64.dart';
 
+/// Improved Kalman-based sensor fusion with bias adaptation, ZUPT,
+/// initial orientation, and adaptive thresholding.
 class KalmanFilter {
-  // Kalman state using Vector3 for rotation, position, and velocity
-  Vector3 rotation = Vector3.zero();
-  Vector3 P_rotation = Vector3(1.0, 1.0, 1.0);
-  double Q = 0.01, R = 0.1;
-  Vector3 Q_rotation = Vector3.zero();
+  Vector3 rotation = Vector3.zero();  // (pitch, roll, yaw)
+  Vector3 P = Vector3.all(1.0);
+  static const double Q = 0.01, R = 0.1;
 
-  // Position and velocity using Vector3
   Vector3 position = Vector3.zero();
   Vector3 velocity = Vector3.zero();
-  Vector3 gravity=Vector3.zero();
+  Vector3 gravity = Vector3.zero();
+  Vector3 linear = Vector3.zero();
 
-  Vector3 linear=Vector3.zero();
-  // Gyroscope bias
   Vector3 biasGyro = Vector3.zero();
-
-  // Low-pass filter values
   Vector3 filtAccel = Vector3.zero();
-  Vector2 filtMag = Vector2.zero();
-  static const double alpha = 0.8;
+  Vector3 filtMag   = Vector3.zero();
+  static const double alphaAccel = 0.8, alphaMag = 0.8;
 
-  // Stillness tracking
   int stillCount = 0;
-  static const double motionThreshold = 0.15;
-  static const int stillThreshold = 15;
-  static const double damping = 0.9;
+  static const int stillThreshold = 30;
+  double baseThreshold = 0.05;
+  static const double biasAdaptRate = 0.01;
 
-  // Set gyro bias
+  /// Initialize orientation from accelerometer (pitch, roll)
+  void initializeFromAccel(Vector3 accel) {
+    double pitch = atan2(accel.y, sqrt(accel.x * accel.x + accel.z * accel.z));
+    double roll  = atan2(-accel.x, accel.z);
+    rotation.setValues(pitch, roll, 0.0);
+  }
+
   void calibrateGyroBias(Vector3 gyro) {
     biasGyro = gyro;
   }
 
-  // Main fusion function
-  void updateFusion({
+  /// Main update: dt in seconds, raw sensor readings in device axes
+  void update({
     required double dt,
-    required Vector3 accl,
+    required Vector3 accel,
     required Vector3 gyro,
-    required Vector2 mag,
+    required Vector3 mag,
   }) {
-    // Bias correction for gyro
-    Vector3 gyroCorrected = gyro - biasGyro;
-
-    // Low-pass filtering for accelerometer
-  filtAccel = Vector3(
-    alpha * filtAccel.x + (1 - alpha) * accl.x,
-    alpha * filtAccel.y + (1 - alpha) * accl.y,
-    alpha * filtAccel.z + (1 - alpha) * accl.z,
-  );
-
-  // Low-pass filtering for magnetometer
-  filtMag = Vector2(
-    alpha * filtMag.x + (1 - alpha) * mag.x,
-    alpha * filtMag.y + (1 - alpha) * mag.y,
-  );
-
-
-    // Gyro integration
-    rotation += gyroCorrected * dt;
-
-    // Accel & magnetometer-based angles
-    double accelPitch = atan2(filtAccel.y, sqrt(filtAccel.x * filtAccel.x + filtAccel.z * filtAccel.z));
-    double accelRoll = atan2(-filtAccel.x, filtAccel.z);
-    double accelYaw = atan2(filtMag.y, filtMag.x);
-
-    // Kalman gain
-    double K_pitch = P_rotation.x / (P_rotation.x + R);
-    double K_roll = P_rotation.y / (P_rotation.y + R);
-    double K_yaw = P_rotation.z / (P_rotation.z + R);
-
-    // Kalman update
-    rotation.x = rotation.x + K_pitch * (accelPitch - rotation.x);
-    rotation.y = rotation.y + K_roll * (accelRoll - rotation.y);
-    rotation.z = rotation.z + K_yaw * (accelYaw - rotation.z);
-
-    // Update covariance
-    P_rotation.x = (1 - K_pitch) * P_rotation.x + Q;
-    P_rotation.y = (1 - K_roll) * P_rotation.y + Q;
-    P_rotation.z = (1 - K_yaw) * P_rotation.z + Q;
-
-    // Gravity removal
-    gravity = Vector3(
-      sin(rotation.x),
-      -sin(rotation.y) * cos(rotation.x),
-      cos(rotation.y) * cos(rotation.x),
-    );
-
-    linear = accl - gravity * 9.81;
-
-
-    // Threshold filter
-    linear = _thresholdFilter(linear);
-
-    // Still detection
-    double linearMag = linear.length;
-    const double smallThreshold = 0.01;
-    stillCount = linearMag < smallThreshold ? stillCount + 1 : 0;
-
+    // 1) Bias adaptation on stillness
     if (stillCount > stillThreshold) {
-      velocity = Vector3.zero();
+      biasGyro = biasGyro * (1 - biasAdaptRate) + gyro * biasAdaptRate;
     }
+    final gyroCorr = gyro - biasGyro;
 
-    if (stillCount > 0) {
-      velocity *= damping;
-    }
-
-    // Integrate velocity and position
-    velocity += linear * dt;
-    position += velocity * dt;
-  }
-
-  Vector3 _thresholdFilter(Vector3 value) {
-    return Vector3(
-      value.x.abs() < motionThreshold ? 0.0 : value.x,
-      value.y.abs() < motionThreshold ? 0.0 : value.y,
-      value.z.abs() < motionThreshold ? 0.0 : value.z,
+    // 2) Low-pass filters
+    filtAccel = Vector3(
+      alphaAccel * filtAccel.x + (1 - alphaAccel) * accel.x,
+      alphaAccel * filtAccel.y + (1 - alphaAccel) * accel.y,
+      alphaAccel * filtAccel.z + (1 - alphaAccel) * accel.z,
     );
+    filtMag = Vector3(
+      alphaMag * filtMag.x + (1 - alphaMag) * mag.x,
+      alphaMag * filtMag.y + (1 - alphaMag) * mag.y,
+      alphaMag * filtMag.z + (1 - alphaMag) * mag.z,
+    );
+
+    // 3) Predict orientation
+    rotation += gyroCorr * dt;
+
+    // 4) Accel-based pitch/roll
+    double accelPitch = atan2(
+      filtAccel.y,
+      sqrt(filtAccel.x * filtAccel.x + filtAccel.z * filtAccel.z),
+    );
+    double accelRoll = atan2(-filtAccel.x, filtAccel.z);
+
+    // 5) Magnetometer-based yaw calculation
+    final normA = filtAccel.normalized();
+    final east  = filtMag.cross(normA).normalized();
+    final north = normA.cross(east).normalized();
+    double accelYaw = atan2(east.y, east.x);
+
+    // 6) Kalman gains
+    double Kp = P.x / (P.x + R);
+    double Kr = P.y / (P.y + R);
+    double Ky = P.z / (P.z + R);
+
+    // 7) Update orientation
+    rotation.x += Kp * (accelPitch - rotation.x);
+    rotation.y += Kr * (accelRoll  - rotation.y);
+    rotation.z += Ky * (accelYaw   - rotation.z);
+
+    // 8) Update covariance
+    P.x = (1 - Kp) * P.x + Q;
+    P.y = (1 - Kr) * P.y + Q;
+    P.z = (1 - Ky) * P.z + Q;
+
+    // 9) Compute gravity vector
+    gravity = Vector3(
+      -sin(rotation.y),
+      sin(rotation.x) * cos(rotation.y),
+      cos(rotation.x) * cos(rotation.y),
+    );
+
+    // 10) Remove gravity to get linear acceleration
+    linear = accel - gravity * 9.81;
+
+    // 11) Adaptive threshold & deadband
+    double thresh = baseThreshold;
+    if (linear.length < thresh) stillCount++; else stillCount = 0;
+    if (stillCount > stillThreshold) velocity = Vector3.zero();
+    if (stillCount > 0) velocity *= 0.95;
+
+    linear = Vector3(
+      linear.x.abs() < thresh ? 0 : linear.x,
+      linear.y.abs() < thresh ? 0 : linear.y,
+      linear.z.abs() < thresh ? 0 : linear.z,
+    );
+
+    // 12) Velocity & position update (HPF)
+    velocity = velocity * 0.98 + linear * dt * 0.02;
+    position += velocity * dt;
   }
 }
 
 class SensorFusionPositionScreen extends StatefulWidget {
-  const SensorFusionPositionScreen({super.key});
-
   @override
-    _SensorFusionPositionScreenState createState() =>
-      _SensorFusionPositionScreenState();
+  _SensorFusionPositionScreenState createState() => _SensorFusionPositionScreenState();
 }
 
 class _SensorFusionPositionScreenState extends State<SensorFusionPositionScreen> {
-  // Sensor values using Vector3 for accelerometer, gyroscope, and magnetometer
   Vector3 _accel = Vector3.zero();
-  Vector3 _gyro = Vector3.zero();
-  Vector2 _mag = Vector2.zero();
+  Vector3 _gyro  = Vector3.zero();
+  Vector3 _mag   = Vector3.zero();
 
-  DateTime? _lastUpdate;
-  Timer? _timer;
-  final KalmanFilter kalman = KalmanFilter();
+  DateTime? _last;
+  late Timer _timer;
+  final KalmanFilter _kf = KalmanFilter();
 
   @override
   void initState() {
     super.initState();
+    _calibrateGyro();
 
-    _calibrateGyro(); // auto-calibrate gyro at startup
+    accelerometerEvents.listen((e) => setState(() => _accel = Vector3(e.x, e.y, e.z)));
+    gyroscopeEvents.listen((e)      => setState(() => _gyro  = Vector3(e.x, e.y, e.z)));
+    magnetometerEvents.listen((e)   => setState(() => _mag   = Vector3(e.x, e.y, e.z)));
 
-    // Listen to sensor events and update corresponding Vector3 and Vector2 values
-    accelerometerEvents.listen((e) {
-      _accel = Vector3(e.x, e.y, e.z);
+    Future.delayed(Duration(seconds: 1), () {
+      _kf.initializeFromAccel(_accel);
     });
 
-    gyroscopeEvents.listen((e) {
-      _gyro = Vector3(e.x, e.y, e.z);
-    });
-
-    magnetometerEvents.listen((e) {
-      _mag = Vector2(e.x, e.y); // Magnetometer only provides x, y, hence using Vector2
-    });
-
-    // Update sensor fusion every 20ms (50Hz)
-    _timer = Timer.periodic(
-        const Duration(milliseconds: 20), (_) => _updateFusion());
+    _timer = Timer.periodic(Duration(milliseconds: 20), (_) => _updateFusion());
   }
 
   void _calibrateGyro() {
-    Vector3 sum = Vector3.zero();
-    int count = 0;
+    Vector3 sum = Vector3.zero(); int count = 0;
     StreamSubscription<GyroscopeEvent>? sub;
-
     sub = gyroscopeEvents.listen((e) {
       if (count < 100) {
         sum += Vector3(e.x, e.y, e.z);
         count++;
       } else {
-        kalman.calibrateGyroBias(Vector3(sum.x / count, sum.y / count, sum.z / count));
-        sub?.cancel(); // ✅ safe to call now
+        _kf.calibrateGyroBias(sum / count.toDouble());
+        sub?.cancel();
       }
     });
   }
 
   void _updateFusion() {
     final now = DateTime.now();
-    if (_lastUpdate == null) {
-      _lastUpdate = now;
-      return;
+    if (_last == null) {
+      _last = now; return;
     }
-
-    // Calculate the time delta in seconds
-    double dt = now.difference(_lastUpdate!).inMilliseconds / 1000.0;
-    _lastUpdate = now;
-
-    // Update the Kalman filter with new sensor values
-    kalman.updateFusion(
-      dt: dt,
-      accl: _accel,
-      gyro: _gyro,
-      mag: _mag,
-    );
-
-    setState(() {});
+    double dt = now.difference(_last!).inMilliseconds.clamp(1,50) / 1000.0;
+    _last = now;
+    _kf.update(dt: dt, accel: _accel, gyro: _gyro, mag: _mag);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _timer.cancel();
     super.dispose();
   }
 
+  String fmtV3(Vector3 v, int prec) => '(${v.x.toStringAsFixed(prec)}, ${v.y.toStringAsFixed(prec)}, ${v.z.toStringAsFixed(prec)})';
+
   @override
   Widget build(BuildContext context) {
-    // Calculate gravity components based on the rotation from Kalman filter
-    double gravityX = sin(kalman.rotation.x);
-    double gravityY = -sin(kalman.rotation.y) * cos(kalman.rotation.x);
-    double gravityZ = cos(kalman.rotation.y) * cos(kalman.rotation.x);
-
     return Scaffold(
-      appBar: AppBar(title: const Text("Sensor Fusion Position Estimation")),
+      appBar: AppBar(title: Text('Sensor Fusion Debug')),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("Pitch: ${kalman.rotation.x.toStringAsFixed(2)} rad"),
-            Text("Roll: ${kalman.rotation.y.toStringAsFixed(2)} rad"),
-            Text("Yaw: ${kalman.rotation.z.toStringAsFixed(2)} rad"),
-            const SizedBox(height: 20),
-            Text("Position X: ${kalman.position.x.toStringAsFixed(2)} m"),
-            Text("Position Y: ${kalman.position.y.toStringAsFixed(2)} m"),
-            Text("Position Z: ${kalman.position.z.toStringAsFixed(2)} m"),
-            const SizedBox(height: 20),
-            Text("Gravity X: ${(kalman.gravity.x * 9.81).toStringAsFixed(2)} m/s²"),
-            Text("Gravity Y: ${(kalman.gravity.y * 9.81).toStringAsFixed(2)} m/s²"),
-            Text("Gravity Z: ${(kalman.gravity.z * 9.81).toStringAsFixed(2)} m/s²"),
-            const SizedBox(height: 20),
-            Text("Gyro X: ${_gyro.x.toStringAsFixed(2)} rad/s"),
-            Text("Gyro Y: ${_gyro.y.toStringAsFixed(2)} rad/s"),
-            Text("Gyro Z: ${_gyro.z.toStringAsFixed(2)} rad/s"),
-            const SizedBox(height: 20),
-            Text("Acceleration X: ${_accel.x.toStringAsFixed(2)} m/s²"),
-            Text("Acceleration Y: ${_accel.y.toStringAsFixed(2)} m/s²"),
-            Text("Acceleration Z: ${_accel.z.toStringAsFixed(2)} m/s²"),
-            const SizedBox(height: 20),
-            Text("Linear X: ${kalman.gravity.x.toStringAsFixed(2)} m/s²"),
-            Text("Linear Y: ${kalman.gravity.y.toStringAsFixed(2)} m/s²"),
-            Text("Linear Z: ${kalman.gravity.z.toStringAsFixed(2)} m/s²"),
-          ],
+        padding: EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Orientation (rad): ' + fmtV3(_kf.rotation, 3)),
+              SizedBox(height: 8),
+              Text('Position (m): ' + fmtV3(_kf.position, 2)),
+              Text('Velocity (m/s): ' + fmtV3(_kf.velocity, 2)),
+              SizedBox(height: 12),
+
+              Text('Raw Sensors:'),
+              Text('  Accel : ' + fmtV3(_accel, 2)),
+              Text('  Gyro  : ' + fmtV3(_gyro, 2)),
+              Text('  Mag   : ' + fmtV3(_mag, 2)),
+              SizedBox(height: 12),
+
+              Text('Gravity (unit g): ' + fmtV3(_kf.gravity, 2)),
+              Text('Linear Accel (m/s²): ' + fmtV3(_kf.linear, 2)),
+              SizedBox(height: 12),
+
+              Text('Debug:'),
+              Text('  StillCount = ${_kf.stillCount}'),
+              Text('  GyroBias = ' + fmtV3(_kf.biasGyro, 3)),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-
