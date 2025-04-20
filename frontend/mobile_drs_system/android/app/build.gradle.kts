@@ -6,6 +6,7 @@ plugins {
 }
 
 android {
+
     namespace = "com.example.mobile_drs_system" // Make sure to set this to your app’s namespace
     compileSdk = 35  // Use SDK 34 to match ARCore's requirements
 
@@ -18,6 +19,11 @@ android {
     }
 
     ndkVersion = "27.0.12077973" // Make sure to set this to match ARCore's NDK version
+
+    namespace = "com.example.mobile_drs_system"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = "27.0.12077973"
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

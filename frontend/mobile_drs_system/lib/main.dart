@@ -1,8 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_drs_system/providers/camera.dart';
+import 'package:mobile_drs_system/controllers/connection.dart';
+import 'package:mobile_drs_system/providers/network/client.dart';
+import 'package:mobile_drs_system/providers/network/server.dart';
+import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
 void main() {
-  runApp(const MainApp());
+  runApp(MultiProvider(providers: [
+    ChangeNotifierProvider(create: (_) => ServerProvider()),
+    ChangeNotifierProvider(create: (_) => ClientProvider()),
+    Provider(
+        create: (_) => ConnectionController(
+            Provider.of<ServerProvider>(_, listen: false),
+            Provider.of<ClientProvider>(_, listen: false))),
+    ChangeNotifierProvider(create: (_) => CameraService()),
+  ], child: const MainApp()));
 }
 
 class MainApp extends StatelessWidget {
@@ -12,6 +28,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Mobile DRS App',
+      scaffoldMessengerKey: scaffoldMessengerKey,
       home: const HomeScreen(),
       theme: ThemeData(
         primarySwatch: Colors.blue,

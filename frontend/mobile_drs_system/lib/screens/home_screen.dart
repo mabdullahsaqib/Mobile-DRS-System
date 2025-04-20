@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_drs_system/utils/utils.dart';
 import 'master_screen.dart';
 import 'secondary_screen.dart';
 import '../widgets/role_button.dart';
@@ -10,6 +11,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    requestPermissions();
     return Scaffold(
       appBar: AppBar(title: const Text("Mobile DRS App")),
       body: Center(
@@ -32,6 +34,7 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const SecondaryScreen()),
+
                 );
               },
             ),
