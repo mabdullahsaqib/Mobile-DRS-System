@@ -8,6 +8,6 @@ router = APIRouter()
 def hello():
     return "helloWorld"
 
-@router.get("/process_frame")
+@router.post("/process_frame")
 def trajectory_analysis_status(frameData: TrajectoryData):
     return process_frame(frameData)
