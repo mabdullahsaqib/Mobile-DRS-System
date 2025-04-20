@@ -23,6 +23,9 @@ class SecondaryScreenState extends State<SecondaryScreen> {
   Map<String, dynamic>? receivedData;
   final _controller = TextEditingController();
 
+  late ClientProvider _clientProvider; // For methods/dispose
+  late CameraService _cameraService; // For methods/dispose
+
   void updateReceivedData(Map<String, dynamic> data) {
     setState(() {
       receivedData = data;
@@ -45,15 +48,12 @@ class SecondaryScreenState extends State<SecondaryScreen> {
   }
 
   void clientStartRecording() {
-    final clientProvider = context.read<ClientProvider>();
-    if (!clientProvider.isConnected) return;
+    if (!_clientProvider.isConnected) return;
     final cameraService = context.read<CameraService>();
     cameraService.initialize().then(
       (_) {
         if (cameraService.isRecording) return;
         cameraService.startRecording(10).then((path) {
-          scaffoldMessengerKey.currentState?.showSnackBar(
-              SnackBar(content: Text("Recording saved at: $path")));
           //send recording to server
           sendRecordingToServer(path);
         }).catchError((error) {
@@ -66,23 +66,19 @@ class SecondaryScreenState extends State<SecondaryScreen> {
   }
 
   void clientStopRecording() {
-    final cameraService = context.read<CameraService>();
-    if (!cameraService.isRecording) return;
+    if (!_cameraService.isRecording) return;
     //Once we stop camera service recording our startRecording method can send video to server
-    cameraService.stopRecording().then((path) {
-      scaffoldMessengerKey.currentState
-          ?.showSnackBar(const SnackBar(content: Text("Recording stopped")));
-    }).catchError((error) {
+    _cameraService.stopRecording().catchError((error) {
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error: $error")),
       );
+      return error;
     });
   }
 
   void sendRecordingToServer(String filePath) async {
     //Encode file as base64 string and send it and the filename
-    final clientProvider = context.read<ClientProvider>();
-    if (!clientProvider.isConnected) return;
+    if (!_clientProvider.isConnected) return;
     final file = File(filePath);
     if (!await file.exists()) {
       scaffoldMessengerKey.currentState?.showSnackBar(
@@ -102,7 +98,7 @@ class SecondaryScreenState extends State<SecondaryScreen> {
       }),
     };
     try {
-      clientProvider.sendJSON(data, callback: () {
+      _clientProvider.sendJSON(data, callback: () {
         scaffoldMessengerKey.currentState?.showSnackBar(
           const SnackBar(content: Text("Recording sent to server")),
         );
@@ -115,17 +111,36 @@ class SecondaryScreenState extends State<SecondaryScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _clientProvider = Provider.of<ClientProvider>(context, listen: false);
+    _cameraService = Provider.of<CameraService>(context, listen: false);
+    _cameraService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    if (_clientProvider.isConnected) {
+      _clientProvider.disconnect();
+    }
+    _cameraService.delete();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final connectionController = context.watch<ConnectionController>();
-    final clientProvider = context.watch<ClientProvider>();
-    updateReceivedData(clientProvider.receivedData);
+    final data = context.watch<ClientProvider>().receivedData;
+    final isConnected = context.watch<ClientProvider>().isConnected;
+    updateReceivedData(data);
     return Scaffold(
       appBar: AppBar(title: const Text("Secondary (Leg Side)")),
       body: Center(
         child: Column(
           children: [
             const SizedBox(height: 10),
-            clientProvider.isConnected
+            isConnected
                 ? const Text("Connected")
                 : Column(
                     children: [

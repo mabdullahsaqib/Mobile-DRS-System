@@ -20,15 +20,17 @@ class MasterScreenState extends State<MasterScreen> {
 
   final _controller = TextEditingController();
 
-  void handleSubmit(context) {
+  late ServerProvider _serverProvider; // For methods/dispose
+  late CameraService _cameraService; // For methods/dispose
+
+  void handleSubmit(BuildContext context) {
     if (input.isEmpty) {
       scaffoldMessengerKey.currentState?.showSnackBar(
         const SnackBar(content: Text("Please enter some data")),
       );
       return;
     }
-    final serverProvider = context.read<ServerProvider>();
-    serverProvider.sendJSON({
+    _serverProvider.sendJSON({
       "type": CommandType.sendString.name,
       "data": input,
     });
@@ -42,11 +44,9 @@ class MasterScreenState extends State<MasterScreen> {
   }
 
   void serverStartRecording() {
-    final serverProvider = Provider.of<ServerProvider>(context, listen: false);
-    final cameraService = Provider.of<CameraService>(context, listen: false);
-    if (cameraService.isRecording) return;
-    if (!serverProvider.isRunning) return;
-    cameraService.startRecording(10).then((path) {
+    if (_cameraService.isRecording) return;
+    if (!_serverProvider.isRunning) return;
+    _cameraService.startRecording(10).then((path) {
       scaffoldMessengerKey.currentState
           ?.showSnackBar(SnackBar(content: Text("Recording saved at: $path")));
       Navigator.push(
@@ -60,36 +60,52 @@ class MasterScreenState extends State<MasterScreen> {
       );
     });
     setState(() {});
-    serverProvider.sendJSON({
+    _serverProvider.sendJSON({
       "type": CommandType.startRecording.name,
     });
   }
 
   //Once recording is stopped, we wait for the secondary device to send the recorded file so we need a waiting Screen
   void serverStopRecording() {
-    final cameraService = Provider.of<CameraService>(context, listen: false);
-    final serverProvider = Provider.of<ServerProvider>(context, listen: false);
-    if (!cameraService.isRecording) return;
-    cameraService.stopRecording().then((path) {
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        const SnackBar(content: Text("Recording stopped")),
-      );
-    }).catchError((error) {
+    _cameraService = Provider.of<CameraService>(context, listen: false);
+    _serverProvider = Provider.of<ServerProvider>(context, listen: false);
+    if (!_cameraService.isRecording) return;
+    _cameraService.stopRecording().then((path) {}).catchError((error) {
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error: $error")),
       );
     });
     setState(() {});
-    serverProvider.sendJSON({
+    _serverProvider.sendJSON({
       "type": CommandType.stopRecording.name,
     });
+  }
+
+  //Called on init and every time the widget is rebuilt
+  @override
+  void initState() {
+    super.initState();
+    _serverProvider = Provider.of<ServerProvider>(context, listen: false);
+    _cameraService = Provider.of<CameraService>(context, listen: false);
+    _cameraService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    if (_serverProvider.isRunning) {
+      _serverProvider.stopServer();
+    }
+    _cameraService.delete();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final connectionController = context.watch<ConnectionController>();
-    final serverProvider = context.watch<ServerProvider>();
-    final cameraService = context.watch<CameraService>();
+    final serverIsRunning = context.watch<ServerProvider>().isRunning;
+    final serverIPAddress = context.watch<ServerProvider>().ipAddress;
+    final isRecording = context.watch<CameraService>().isRecording;
     return Scaffold(
       appBar: AppBar(title: const Text("Master (Bowler's End)")),
       body: Padding(
@@ -100,8 +116,8 @@ class MasterScreenState extends State<MasterScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 10),
-              serverProvider.isRunning
-                  ? Text("Server is running on IP: ${serverProvider.ipAddress}",
+              serverIsRunning
+                  ? Text("Server is running on IP: $serverIPAddress",
                       style: const TextStyle(fontSize: 18))
                   : ElevatedButton(
                       onPressed: () {
@@ -136,7 +152,7 @@ class MasterScreenState extends State<MasterScreen> {
               Text(sentData,
                   style: const TextStyle(fontSize: 24, color: Colors.green)),
               const SizedBox(height: 30),
-              cameraService.isRecording
+              isRecording
                   ? IconButton(
                       onPressed: () => serverStopRecording(),
                       icon: const Icon(Icons.stop))

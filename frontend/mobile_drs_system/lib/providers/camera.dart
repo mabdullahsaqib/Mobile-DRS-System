@@ -25,6 +25,7 @@ class CameraService with ChangeNotifier {
       ResolutionPreset.high,
     );
     await _controller!.initialize();
+    await _controller!.prepareForVideoRecording();
   }
 
   Future<void> delete() async {
@@ -34,10 +35,13 @@ class CameraService with ChangeNotifier {
     }
   }
 
+  @override
+  Future<void> dispose() async {
+    await delete();
+    super.dispose();
+  }
+
   Future<String> startRecording(int duration) async {
-    if (_controller == null) {
-      await initialize();
-    }
     if (_isRecording ||
         _controller == null ||
         !_controller!.value.isInitialized) {
@@ -81,7 +85,6 @@ class CameraService with ChangeNotifier {
 
     await file.saveTo(path); // Save the video to the new path
     notifyListeners();
-    await delete();
     return path;
   }
 }

@@ -18,4 +18,9 @@ class ConnectionController {
     }
     await clientProvider.connect(IP);
   }
+
+  Future<void> disconnect() async {
+    await clientProvider.disconnect();
+    await serverProvider.stopServer();
+  }
 }

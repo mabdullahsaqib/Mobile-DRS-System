@@ -28,7 +28,8 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
     //Add _2 to the filename
     String extension = filename.split('.').last;
     filename = filename.replaceAll(".$extension", "_2.$extension");
-    final dir = await getApplicationDocumentsDirectory();
+    Directory? dir = await getExternalStorageDirectory();
+    dir ??= await getApplicationDocumentsDirectory();
     final filePath = "${dir.path}/$filename";
     final file = File(filePath);
     try {
