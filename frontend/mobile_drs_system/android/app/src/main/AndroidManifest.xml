@@ -1,10 +1,16 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
         <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
         <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
         <uses-permission android:name="android.permission.CAMERA" />
-        <uses-permission android:name="android.permission.RECORD_AUDIO" />
-        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+        <uses-permission android:name="android.permission.RECORD_AUDIO" />  
         <uses-permission android:name="android.permission.INTERNET" />
+        <!-- Permission to read files from external storage (Required for API level <= 29) -->
+        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+        <!-- Permission to write files to external storage (Required for API level <= 29, deprecated in API level 30 and above. Use MANAGE_EXTERNAL_STORAGE for API >= 30) -->
+        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:replace="android:maxSdkVersion"/>
+        <!-- Permission to manage all files on external storage (Required for API level >= 30, covers reading and writing) -->
+        <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <application
         android:label="mobile_drs_system"
         android:name="${applicationName}"

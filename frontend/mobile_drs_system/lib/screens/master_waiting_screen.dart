@@ -1,12 +1,11 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_media_store/flutter_media_store.dart';
 import 'package:mobile_drs_system/main.dart';
 import 'package:mobile_drs_system/models/command_type.dart';
 import 'package:mobile_drs_system/providers/network/server.dart';
 import 'package:mobile_drs_system/utils/utils.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 class MasterWaitingScreen extends StatefulWidget {
@@ -28,20 +27,26 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
     //Add _2 to the filename
     String extension = filename.split('.').last;
     filename = filename.replaceAll(".$extension", "_2.$extension");
-    Directory? dir = await getExternalStorageDirectory();
-    dir ??= await getApplicationDocumentsDirectory();
-    final filePath = "${dir.path}/$filename";
-    final file = File(filePath);
-    try {
-      await file.writeAsBytes(bytes);
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(content: Text("Recording from device 2 saved: $filePath")),
-      );
-    } catch (e) {
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(content: Text("Error saving recording: $e")),
-      );
-    }
+    final flutterMediaStorePlugin = FlutterMediaStore();
+    await flutterMediaStorePlugin.saveFile(
+      fileData: bytes,
+      fileName: filename,
+      mimeType: "video/$extension",
+      rootFolderName: "MobileDRS",
+      folderName: "Videos",
+      onError: (e) {
+        scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(content: Text("Error saving recording: $e")),
+        );
+      },
+      onSuccess: (uri, filePath) {
+        // File saved successfully
+        scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(content: Text("Recording from device 2 saved: $filePath")),
+        );
+      },
+    );
+
     return;
   }
 
@@ -54,6 +59,7 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
           parseJsonInIsolate(recievedData!["data"]).then((data) {
             recieveRecording(data);
             if (mounted) {
+              context.read<ServerProvider>().clearReceivedData();
               Navigator.pop(context);
             }
           });

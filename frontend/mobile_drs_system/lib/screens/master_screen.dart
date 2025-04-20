@@ -49,11 +49,14 @@ class MasterScreenState extends State<MasterScreen> {
     _cameraService.startRecording(10).then((path) {
       scaffoldMessengerKey.currentState
           ?.showSnackBar(SnackBar(content: Text("Recording saved at: $path")));
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const MasterWaitingScreen(),
-          ));
+      if (mounted) {
+        _serverProvider.clearReceivedData();
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MasterWaitingScreen(),
+            ));
+      }
     }).catchError((error) {
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error: $error")),

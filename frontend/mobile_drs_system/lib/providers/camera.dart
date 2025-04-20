@@ -1,16 +1,13 @@
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/widgets.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart';
+import 'package:flutter_media_store/flutter_media_store.dart';
 
 class CameraService with ChangeNotifier {
   CameraController? _controller;
   bool _isRecording = false;
-  String? _lastVideoPath;
 
   bool get isRecording => _isRecording;
-  String? get lastVideoPath => _lastVideoPath;
 
   Completer<void>? _recordingCompleter;
   Timer? _recordingTimer;
@@ -72,9 +69,22 @@ class CameraService with ChangeNotifier {
     final file = await _controller!.stopVideoRecording();
     _isRecording = false;
 
-    var directory = await getExternalStorageDirectory();
-    directory ??= await getApplicationDocumentsDirectory();
-    path = join(directory.path, '${DateTime.now().millisecondsSinceEpoch}.mp4');
+    //Once video recording is stopped, we save file to the device and then
+    //return the path to the file
+    final flutterMediaStore = FlutterMediaStore();
+    await flutterMediaStore.saveFile(
+      fileData: await file.readAsBytes(),
+      fileName: '${DateTime.now().millisecondsSinceEpoch}.mp4',
+      mimeType: "video/mp4",
+      rootFolderName: "MobileDRS",
+      folderName: "Videos",
+      onError: (e) {
+        throw Exception("Error saving video: $e");
+      },
+      onSuccess: (uri, filePath) {
+        path = filePath;
+      },
+    );
 
     if (_recordingCompleter != null && !_recordingCompleter!.isCompleted) {
       _recordingCompleter!.complete();
@@ -83,7 +93,6 @@ class CameraService with ChangeNotifier {
     _recordingTimer = null;
     _recordingCompleter = null;
 
-    await file.saveTo(path); // Save the video to the new path
     notifyListeners();
     return path;
   }

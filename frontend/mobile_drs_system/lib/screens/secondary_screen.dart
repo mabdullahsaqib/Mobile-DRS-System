@@ -81,6 +81,7 @@ class SecondaryScreenState extends State<SecondaryScreen> {
     if (!_clientProvider.isConnected) return;
     final file = File(filePath);
     if (!await file.exists()) {
+      print("File does not exist: $filePath");
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("File does not exist :$filePath")),
       );
