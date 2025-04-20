@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_drs_system/main.dart';
 import 'package:mobile_drs_system/providers/camera.dart';
 import 'package:mobile_drs_system/controllers/connection.dart';
 import 'package:mobile_drs_system/models/command_type.dart';
@@ -21,7 +22,7 @@ class MasterScreenState extends State<MasterScreen> {
 
   void handleSubmit(context) {
     if (input.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         const SnackBar(content: Text("Please enter some data")),
       );
       return;
@@ -31,7 +32,7 @@ class MasterScreenState extends State<MasterScreen> {
       "type": CommandType.sendString.name,
       "data": input,
     });
-    ScaffoldMessenger.of(context).showSnackBar(
+    scaffoldMessengerKey.currentState?.showSnackBar(
       const SnackBar(content: Text("Data sent successfully")),
     );
     setState(() {
@@ -45,21 +46,22 @@ class MasterScreenState extends State<MasterScreen> {
     final cameraService = Provider.of<CameraService>(context, listen: false);
     if (cameraService.isRecording) return;
     if (!serverProvider.isRunning) return;
-    serverProvider.sendJSON({
-      "type": CommandType.startRecording.name,
-    });
     cameraService.startRecording(10).then((path) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Recording saved at: $path")));
+      scaffoldMessengerKey.currentState
+          ?.showSnackBar(SnackBar(content: Text("Recording saved at: $path")));
       Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => const MasterWaitingScreen(),
           ));
     }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error: $error")),
       );
+    });
+    setState(() {});
+    serverProvider.sendJSON({
+      "type": CommandType.startRecording.name,
     });
   }
 
@@ -68,17 +70,18 @@ class MasterScreenState extends State<MasterScreen> {
     final cameraService = Provider.of<CameraService>(context, listen: false);
     final serverProvider = Provider.of<ServerProvider>(context, listen: false);
     if (!cameraService.isRecording) return;
-    serverProvider.sendJSON({
-      "type": CommandType.stopRecording.name,
-    });
     cameraService.stopRecording().then((path) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         const SnackBar(content: Text("Recording stopped")),
       );
     }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error: $error")),
       );
+    });
+    setState(() {});
+    serverProvider.sendJSON({
+      "type": CommandType.stopRecording.name,
     });
   }
 
@@ -106,8 +109,7 @@ class MasterScreenState extends State<MasterScreen> {
                             .startServer()
                             .then((_) {})
                             .catchError((error) {
-                          print(error);
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          scaffoldMessengerKey.currentState?.showSnackBar(
                             SnackBar(
                                 content: Text("Error starting server: $error")),
                           );

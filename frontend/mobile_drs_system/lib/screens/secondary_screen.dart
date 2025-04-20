@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:mobile_drs_system/controllers/connection.dart';
+import 'package:mobile_drs_system/main.dart';
 import 'package:mobile_drs_system/models/command_type.dart';
 import 'package:mobile_drs_system/providers/camera.dart';
 import 'package:mobile_drs_system/providers/network/client.dart';
@@ -51,12 +52,12 @@ class SecondaryScreenState extends State<SecondaryScreen> {
       (_) {
         if (cameraService.isRecording) return;
         cameraService.startRecording(10).then((path) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessengerKey.currentState?.showSnackBar(
               SnackBar(content: Text("Recording saved at: $path")));
           //send recording to server
           sendRecordingToServer(path);
         }).catchError((error) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessengerKey.currentState?.showSnackBar(
             SnackBar(content: Text("Error during recording: $error")),
           );
         });
@@ -69,10 +70,10 @@ class SecondaryScreenState extends State<SecondaryScreen> {
     if (!cameraService.isRecording) return;
     //Once we stop camera service recording our startRecording method can send video to server
     cameraService.stopRecording().then((path) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Recording stopped")));
+      scaffoldMessengerKey.currentState
+          ?.showSnackBar(const SnackBar(content: Text("Recording stopped")));
     }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error: $error")),
       );
     });
@@ -84,7 +85,7 @@ class SecondaryScreenState extends State<SecondaryScreen> {
     if (!clientProvider.isConnected) return;
     final file = File(filePath);
     if (!await file.exists()) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("File does not exist :$filePath")),
       );
       return;
@@ -102,12 +103,12 @@ class SecondaryScreenState extends State<SecondaryScreen> {
     };
     try {
       clientProvider.sendJSON(data, callback: () {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessengerKey.currentState?.showSnackBar(
           const SnackBar(content: Text("Recording sent to server")),
         );
       });
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error sending recording: $error")),
       );
     }

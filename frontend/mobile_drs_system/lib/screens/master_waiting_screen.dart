@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:mobile_drs_system/main.dart';
 import 'package:mobile_drs_system/models/command_type.dart';
 import 'package:mobile_drs_system/providers/network/server.dart';
 import 'package:mobile_drs_system/utils/utils.dart';
@@ -32,11 +33,11 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
     final file = File(filePath);
     try {
       await file.writeAsBytes(bytes);
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Recording from device 2 saved: $filePath")),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(content: Text("Error saving recording: $e")),
       );
     }
@@ -51,7 +52,9 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
           status = "Recording recieved successfully! Processing...";
           parseJsonInIsolate(recievedData!["data"]).then((data) {
             recieveRecording(data);
-            Navigator.pop(context);
+            if (mounted) {
+              Navigator.pop(context);
+            }
           });
           break;
         default:

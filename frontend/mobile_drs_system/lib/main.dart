@@ -6,6 +6,9 @@ import 'package:mobile_drs_system/providers/network/server.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
 void main() {
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider(create: (_) => ServerProvider()),
@@ -25,6 +28,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Mobile DRS App',
+      scaffoldMessengerKey: scaffoldMessengerKey,
       home: const HomeScreen(),
       theme: ThemeData(
         primarySwatch: Colors.blue,

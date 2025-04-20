@@ -79,10 +79,13 @@ class ServerProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void sendJSON(Map<String, dynamic> message) {
+  void sendJSON(Map<String, dynamic> message, {Function? callback}) {
     if (_serverSocket != null) {
       encodeJsonInIsolate(message).then((jsonString) {
         _connectedClient?.write(jsonString);
+        if (callback != null) {
+          callback();
+        }
       });
     }
   }
