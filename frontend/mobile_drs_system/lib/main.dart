@@ -3,6 +3,7 @@ import 'package:mobile_drs_system/providers/camera.dart';
 import 'package:mobile_drs_system/controllers/connection.dart';
 import 'package:mobile_drs_system/providers/network/client.dart';
 import 'package:mobile_drs_system/providers/network/server.dart';
+import 'package:mobile_drs_system/providers/video_save.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 
@@ -18,6 +19,7 @@ void main() {
             Provider.of<ServerProvider>(_, listen: false),
             Provider.of<ClientProvider>(_, listen: false))),
     ChangeNotifierProvider(create: (_) => CameraService()),
+    ChangeNotifierProvider(create: (_) => VideoSaveDataProvider()),
   ], child: const MainApp()));
 }
 
