@@ -1,6 +1,6 @@
 from typing import List, Dict
 from datetime import timedelta
-from modules.trajectory_analysis.models.frame_models import Position3D, Velocity3D, Spin
+from backend.app.modules.trajectory_analysis.models.Output_model import Position3D, Velocity3D, Spin
 
 GRAVITY = -9.81        
 AIR_DENSITY = 1.225    

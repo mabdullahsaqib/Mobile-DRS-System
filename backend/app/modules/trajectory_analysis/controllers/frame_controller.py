@@ -1,7 +1,8 @@
 from datetime import datetime
-from modules.trajectory_analysis.models.frame_models import TrajectoryData
-from modules.trajectory_analysis.models.frame_models import TrajectoryResult, TrajectoryPoint
+from backend.app.modules.trajectory_analysis.models.Output_model import TrajectoryData
+from backend.app.modules.trajectory_analysis.models.Output_model import TrajectoryResult, TrajectoryPoint
 from modules.trajectory_analysis.physics import compute_trajectory, check_stumps_hit
+
 
 def process_frame(frame: TrajectoryData) -> TrajectoryResult:
     raw_path = compute_trajectory(
@@ -24,3 +25,4 @@ def process_frame(frame: TrajectoryData) -> TrajectoryResult:
         decision_confidence=0.85,    
         notes=["Computed with drag, spin, bounce"]
     )
+
