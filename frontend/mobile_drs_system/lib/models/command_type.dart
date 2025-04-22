@@ -1,4 +1,5 @@
 enum CommandType {
+  switchToCamera, //Sent from server to client
   startRecording, //Sent from server to client
   stopRecording, //Sent from server to client
   sendRecording, //Sent from client to server

@@ -72,7 +72,8 @@ class ClientProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void sendJSON(Map<String, dynamic> message, {Function? callback}) {
+  Future<void> sendJSON(Map<String, dynamic> message,
+      {Function? callback}) async {
     if (_socket == null) return;
     // Convert the message to bytes and send it
     encodeJsonInIsolate(message).then((jsonString) {
@@ -81,6 +82,7 @@ class ClientProvider with ChangeNotifier {
       if (callback != null) {
         callback();
       }
+      return;
     });
   }
 

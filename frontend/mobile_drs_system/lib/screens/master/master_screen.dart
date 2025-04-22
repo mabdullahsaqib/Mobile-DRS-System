@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_drs_system/main.dart';
-import 'package:mobile_drs_system/providers/camera.dart';
 import 'package:mobile_drs_system/controllers/connection.dart';
 import 'package:mobile_drs_system/models/command_type.dart';
 import 'package:mobile_drs_system/providers/network/server.dart';
-import 'package:mobile_drs_system/screens/master_waiting_screen.dart';
+import 'package:mobile_drs_system/screens/video_recording_screen.dart';
 import 'package:provider/provider.dart';
-import '../providers/video_save.dart';
-import 'video_player_screen.dart';
+import '../../providers/video_save.dart';
 
 class MasterScreen extends StatefulWidget {
   const MasterScreen({super.key});
@@ -23,7 +21,6 @@ class MasterScreenState extends State<MasterScreen> {
   final _controller = TextEditingController();
 
   late ServerProvider _serverProvider; // For methods/dispose
-  late CameraService _cameraService; // For methods/dispose
   late VideoSaveDataProvider _videoSaveDataProvider; // For methods/dispose
   bool isSecondaryVideoSaved = false; // to go to video player screen
 
@@ -47,56 +44,73 @@ class MasterScreenState extends State<MasterScreen> {
     });
   }
 
-  void serverStartRecording() {
-    if (_cameraService.isRecording) return;
-    if (!_serverProvider.isRunning) return;
-    _cameraService.startRecording(10).then((path) {
-      scaffoldMessengerKey.currentState
-          ?.showSnackBar(SnackBar(content: Text("Recording saved at: $path")));
-      if (mounted) {
-        _serverProvider.clearReceivedData();
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const MasterWaitingScreen(),
-            ));
-      }
-      _videoSaveDataProvider.setMainVideoPath(path);
-      if (_videoSaveDataProvider.secondaryVideoPath.isNotEmpty && mounted) {
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => VideoPlayerScreen(
-                mainVideoPath: _videoSaveDataProvider.mainVideoPath,
-                secondaryVideoPath: _videoSaveDataProvider.secondaryVideoPath,
-              ),
-            ));
-      }
-    }).catchError((error) {
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(content: Text("Error: $error")),
-      );
-    });
-    setState(() {});
-    _serverProvider.sendJSON({
-      "type": CommandType.startRecording.name,
-    });
-  }
+  // void serverStartRecording() {
+  //   //Start Recording if camera service isnt recording and server is running
+  //   if (_cameraService.isRecording) return;
+  //   if (!_serverProvider.isRunning) return;
 
-  //Once recording is stopped, we wait for the secondary device to send the recorded file so we need a waiting Screen
-  void serverStopRecording() {
-    _cameraService = Provider.of<CameraService>(context, listen: false);
-    _serverProvider = Provider.of<ServerProvider>(context, listen: false);
-    if (!_cameraService.isRecording) return;
-    _cameraService.stopRecording().then((path) {}).catchError((error) {
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(content: Text("Error: $error")),
-      );
-    });
-    setState(() {});
+  //   _cameraService.startRecording(10).then((path) {
+  //     //Once camera service is done recording, show the path in a snackbar
+  //     //and navigate to the waiting screen
+  //     scaffoldMessengerKey.currentState
+  //         ?.showSnackBar(SnackBar(content: Text("Recording saved at: $path")));
+  //     if (mounted) {
+  //       //Clear the recieved data so waitingScreen recieves fresh data of recording
+  //       _serverProvider.clearReceivedData();
+
+  //       Navigator.pushNamed(context, AppRoutes.masterWaiting);
+  //     }
+  //     //Set the main video path in the provider so it can be used in the waiting screen
+  //     _videoSaveDataProvider.setMainVideoPath(path);
+  //     //If the secondary video path is not empty, navigate to the video player screen
+  //     //This is used to show the secondary video after the recording is done
+  //     if (_videoSaveDataProvider.secondaryVideoPath.isNotEmpty && mounted) {
+  //       Navigator.push(
+  //           context,
+  //           MaterialPageRoute(
+  //             builder: (context) => VideoPlayerScreen(
+  //               mainVideoPath: _videoSaveDataProvider.mainVideoPath,
+  //               secondaryVideoPath: _videoSaveDataProvider.secondaryVideoPath,
+  //             ),
+  //           ));
+  //     }
+  //   }).catchError((error) {
+  //     scaffoldMessengerKey.currentState?.showSnackBar(
+  //       SnackBar(content: Text("Error: $error")),
+  //     );
+  //   });
+  //   setState(() {});
+  //   _serverProvider.sendJSON({
+  //     "type": CommandType.startRecording.name,
+  //   });
+  // }
+
+  // //Once recording is stopped, we wait for the secondary device to send the recorded file so we need a waiting Screen
+  // void serverStopRecording() {
+  //   _cameraService = Provider.of<CameraService>(context, listen: false);
+  //   _serverProvider = Provider.of<ServerProvider>(context, listen: false);
+  //   if (!_cameraService.isRecording) return;
+  //   _cameraService.stopRecording().then((path) {}).catchError((error) {
+  //     scaffoldMessengerKey.currentState?.showSnackBar(
+  //       SnackBar(content: Text("Error: $error")),
+  //     );
+  //   });
+  //   setState(() {});
+  //   _serverProvider.sendJSON({
+  //     "type": CommandType.stopRecording.name,
+  //   });
+  // }
+
+  void gotoRecordingScreen() async {
     _serverProvider.sendJSON({
-      "type": CommandType.stopRecording.name,
+      "type": CommandType.switchToCamera.name,
     });
+    await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+            builder: (context) => const VideoRecordingScreen(
+                  isSecondary: false,
+                )));
   }
 
   //Called on init and every time the widget is rebuilt
@@ -104,12 +118,10 @@ class MasterScreenState extends State<MasterScreen> {
   void initState() {
     super.initState();
     _serverProvider = Provider.of<ServerProvider>(context, listen: false);
-    _cameraService = Provider.of<CameraService>(context, listen: false);
     _videoSaveDataProvider =
         Provider.of<VideoSaveDataProvider>(context, listen: false);
     isSecondaryVideoSaved =
         _videoSaveDataProvider.secondaryVideoPath.isNotEmpty;
-    _cameraService.initialize();
   }
 
   @override
@@ -118,7 +130,6 @@ class MasterScreenState extends State<MasterScreen> {
     if (_serverProvider.isRunning) {
       _serverProvider.stopServer();
     }
-    _cameraService.delete();
     super.dispose();
   }
 
@@ -127,7 +138,6 @@ class MasterScreenState extends State<MasterScreen> {
     final connectionController = context.watch<ConnectionController>();
     final serverIsRunning = context.watch<ServerProvider>().isRunning;
     final serverIPAddress = context.watch<ServerProvider>().ipAddress;
-    final isRecording = context.watch<CameraService>().isRecording;
     return Scaffold(
       appBar: AppBar(title: const Text("Master (Bowler's End)")),
       body: Padding(
@@ -174,13 +184,9 @@ class MasterScreenState extends State<MasterScreen> {
               Text(sentData,
                   style: const TextStyle(fontSize: 24, color: Colors.green)),
               const SizedBox(height: 30),
-              isRecording
-                  ? IconButton(
-                      onPressed: () => serverStopRecording(),
-                      icon: const Icon(Icons.stop))
-                  : IconButton(
-                      onPressed: () => serverStartRecording(),
-                      icon: const Icon(Icons.play_arrow)),
+              IconButton(
+                  onPressed: () => gotoRecordingScreen(),
+                  icon: const Icon(Icons.play_arrow)),
             ],
           ),
         ),

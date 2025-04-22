@@ -10,9 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  arcore_flutter_plugin:
-    git:
-      url: https://github.com/giandifra/arcore_flutter_plugin.git
   vector_math: ^2.1.4
   sensors_plus: ^6.1.1
   geolocator: ^10.0.0

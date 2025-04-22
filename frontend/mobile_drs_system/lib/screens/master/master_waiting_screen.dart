@@ -7,7 +7,7 @@ import 'package:mobile_drs_system/models/command_type.dart';
 import 'package:mobile_drs_system/providers/network/server.dart';
 import 'package:mobile_drs_system/utils/utils.dart';
 import 'package:provider/provider.dart';
-import '../providers/video_save.dart';
+import '../../providers/video_save.dart';
 import 'video_player_screen.dart';
 
 class MasterWaitingScreen extends StatefulWidget {
@@ -21,8 +21,6 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
   Map<String, dynamic>? recievedData;
   String status = "Waiting for file from secondary...";
   bool recieved = false;
-
-  late VideoSaveDataProvider _videoSaveDataProvider;
 
   Future<String?> recieveRecording(Map<String, dynamic> data) async {
     String? saveFilePath;
@@ -47,11 +45,12 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
       },
       onSuccess: (uri, filePath) {
         // File saved successfully
-        _videoSaveDataProvider.setSecondaryVideoPath(filePath);
-        if (_videoSaveDataProvider.mainVideoPath.isNotEmpty) {
+        final videoSaveDataProvider = context.read<VideoSaveDataProvider>();
+        videoSaveDataProvider.setSecondaryVideoPath(filePath);
+        if (videoSaveDataProvider.mainVideoPath.isNotEmpty) {
           Navigator.push(context, MaterialPageRoute(builder: (context) {
             return VideoPlayerScreen(
-              mainVideoPath: _videoSaveDataProvider.mainVideoPath,
+              mainVideoPath: videoSaveDataProvider.mainVideoPath,
               secondaryVideoPath: filePath,
             );
           }));
@@ -73,10 +72,6 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
           status = "Recording recieved successfully! Processing...";
           parseJsonInIsolate(recievedData!["data"]).then((data) {
             recieveRecording(data);
-            if (mounted) {
-              context.read<ServerProvider>().clearReceivedData();
-              Navigator.pop(context);
-            }
           });
           break;
         default:
@@ -87,7 +82,6 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
   @override
   void initState() {
     super.initState();
-    _videoSaveDataProvider = Provider.of<VideoSaveDataProvider>(context);
   }
 
   @override

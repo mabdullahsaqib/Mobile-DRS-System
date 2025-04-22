@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_drs_system/routes/app_routes.dart';
 import 'package:mobile_drs_system/utils/utils.dart';
-import 'master_screen.dart';
-import 'secondary_screen.dart';
 import '../widgets/role_button.dart';
-import 'ar_screen.dart';
-import 'kalan_filter.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -21,44 +18,21 @@ class HomeScreen extends StatelessWidget {
             RoleButton(
               label: "I am the Master (Bowler's end)",
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MasterScreen()),
-                );
+                Navigator.pushNamed(context, AppRoutes.master);
               },
             ),
             const SizedBox(height: 30),
             RoleButton(
               label: "I am the Secondary (Leg side)",
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SecondaryScreen()),
-
-                );
-              },
-            ),
-            const SizedBox(height: 30),
-            RoleButton(
-              label: "Start AR Experience (DRS)",
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) =>
-                          const ArScreen()), // Navigate to AR Screen
-                );
+                Navigator.pushNamed(context, AppRoutes.secondary);
               },
             ),
             const SizedBox(height: 30),
             RoleButton(
               label: "AcceleroMeter Test",
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => SensorFusionPositionScreen()),
-                );
+                Navigator.pushNamed(context, AppRoutes.kalanFilter);
               },
             ),
           ],
