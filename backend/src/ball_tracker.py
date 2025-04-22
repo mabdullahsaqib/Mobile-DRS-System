@@ -7,9 +7,6 @@ Ball Tracker Module
 This module is responsible for tracking the cricket ball across video frames,
 calculating its trajectory, velocity, acceleration, and spin.
 
-Team Member Responsibilities:
-----------------------------
-Member 4: Ball tracking algorithms, trajectory calculation, and physics modeling
 """
 
 import cv2
@@ -18,16 +15,6 @@ from typing import Dict, List, Any, Tuple, Optional
 import math
 
 class BallTracker:
-    """
-    Tracks cricket ball across frames and calculates trajectory data.
-    
-    This class implements algorithms to track the ball's position across frames,
-    calculate its 3D coordinates, velocity, acceleration, and spin.
-    
-    Team Member Responsibilities:
-    ----------------------------
-    Member 4: Implementation of tracking algorithms and physics calculations
-    """
     
     def __init__(self, config: Dict[str, Any]):
         """
@@ -71,6 +58,8 @@ class BallTracker:
         self.tracking_lost_frames = 0
         self.max_lost_frames = config.get("max_lost_frames", 10)
     
+    
+    #for next sprint, stil researching
     def _init_kalman_filter(self):
         """Initialize Kalman filter for ball tracking."""
         # State: [x, y, z, vx, vy, vz, ax, ay, az]
@@ -166,15 +155,7 @@ class BallTracker:
                                               historical_positions)
     
     def _handle_missing_detection(self, historical_positions: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Handle the case when ball is not detected in the current frame.
-        
-        Args:
-            historical_positions: Previous ball positions
-            
-        Returns:
-            Estimated ball trajectory data or None
-        """
+
         if not self.is_tracking:
             return None
         
@@ -201,12 +182,6 @@ class BallTracker:
         return self._calculate_trajectory_data(predicted_position, confidence, historical_positions)
     
     def _initialize_tracking(self, position: np.ndarray):
-        """
-        Initialize tracking with the first detected position.
-        
-        Args:
-            position: 3D position of the ball
-        """
         self.is_tracking = True
         self.last_position = position
         self.last_velocity = np.zeros(3)
@@ -220,12 +195,7 @@ class BallTracker:
             self.kalman.statePost[6:] = np.array([[0], [-self.gravity], [0]], np.float32)
     
     def _update_tracking(self, position: np.ndarray):
-        """
-        Update tracking with a new detected position.
-        
-        Args:
-            position: 3D position of the ball
-        """
+
         dt = 1.0 / self.frame_rate
         
         if self.use_kalman:
