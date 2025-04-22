@@ -21,6 +21,7 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
   Map<String, dynamic>? recievedData;
   String status = "Waiting for file from secondary...";
   bool recieved = false;
+  late ServerProvider _serverProvider;
 
   Future<String?> recieveRecording(Map<String, dynamic> data) async {
     String? saveFilePath;
@@ -65,6 +66,8 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
   }
 
   void processRecievedData() {
+    recievedData = _serverProvider.receivedData;
+    //If the data is empty, return
     if (recievedData != null) {
       switch (commandFromString(recievedData!["type"])) {
         case CommandType.sendRecording:
@@ -82,13 +85,12 @@ class _MasterWaitingScreenState extends State<MasterWaitingScreen> {
   @override
   void initState() {
     super.initState();
+    _serverProvider = Provider.of<ServerProvider>(context, listen: false);
+    _serverProvider.addListener(processRecievedData);
   }
 
   @override
   Widget build(BuildContext context) {
-    final serverProvider = context.watch<ServerProvider>();
-    recievedData = serverProvider.receivedData;
-    processRecievedData();
     return Scaffold(
       appBar: AppBar(
         title: const Text("Waiting for File"),
