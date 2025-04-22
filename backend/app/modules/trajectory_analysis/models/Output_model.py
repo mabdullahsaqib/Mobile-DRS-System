@@ -1,8 +1,8 @@
-
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 from .Input_model import Position3D, Velocity3D
+
 
 class PredictedPoint(BaseModel):
     time_offset: float
