@@ -6,22 +6,22 @@ import io
 import os
 
 # ----------------------------
-# Configurations
+# Configurations Parameters
 # ----------------------------
-NUM_FRAMES = 100
-FRAME_WIDTH, FRAME_HEIGHT = 640, 360
+NUM_FRAMES = 100 # Total number of frames to simulate
+FRAME_WIDTH, FRAME_HEIGHT = 640, 360  # Frame resolution
 DECISION_TEXT = "OUT"  # Change to "NOT OUT" for alternate result
 output_dir = "augmented_frames"
 os.makedirs(output_dir, exist_ok=True)
 
 # ----------------------------
-# Generate Dummy Ball Positions (like a curved trajectory)
+# Generate Simulated Ball Trajectory (curved path using sine wave)
 # ----------------------------
 np.random.seed(42)
 ball_positions = [(int(FRAME_WIDTH * i / NUM_FRAMES), int(180 + 50 * np.sin(i / 10))) for i in range(NUM_FRAMES)]
 
 # ----------------------------
-# Generate Blank Frame in Base64
+# Generate Blank Frame and Convert to Base64
 # ----------------------------
 def generate_blank_frame():
     frame = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
@@ -32,7 +32,7 @@ def generate_blank_frame():
     return base64_img
 
 # ----------------------------
-# Simulated Frame Data
+#  Create List of Simulated Frame Data with Ball Positions
 # ----------------------------
 frame_data_list = [{
     "frame_id": i,
@@ -42,7 +42,7 @@ frame_data_list = [{
 } for i in range(NUM_FRAMES)]
 
 # ----------------------------
-# Decode Base64 to OpenCV Image
+# Base64 Encoded Image Back to OpenCV Format
 # ----------------------------
 def decode_base64_to_frame(base64_str):
     image_data = base64.b64decode(base64_str)
@@ -51,7 +51,7 @@ def decode_base64_to_frame(base64_str):
     return frame
 
 # ----------------------------
-# Draw Trajectory and Decision Overlay
+# Overlay Ball Trajectory and Decision Text on Frames
 # ----------------------------
 def augment_frames_with_trajectory_and_decision(frame_data_list, decision_text):
     augmented_frames = []
@@ -62,16 +62,16 @@ def augment_frames_with_trajectory_and_decision(frame_data_list, decision_text):
         ball_pos = frame_data["ball_position"]
         positions_drawn.append(ball_pos)
 
-        # Draw trajectory line
+        # Draw trajectory line using past ball positions
         overlay = frame.copy()
         for i in range(1, len(positions_drawn)):
             cv2.line(overlay, positions_drawn[i - 1], positions_drawn[i], (0, 255, 255), 2)
         cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
 
-        # Draw current ball point
+        # Highlight current ball point
         cv2.circle(frame, ball_pos, 5, (0, 0, 255), -1)
 
-        # Add decision text on the last few frames
+        # Add decision text on the last 10 frames
         if frame_data["frame_id"] >= NUM_FRAMES - 10:
             cv2.putText(frame, f"Decision: {decision_text}", (30, 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0) if decision_text == "NOT OUT" else (0, 0, 255), 3)
@@ -81,7 +81,7 @@ def augment_frames_with_trajectory_and_decision(frame_data_list, decision_text):
     return augmented_frames
 
 # ----------------------------
-# Run the Augmentation and Save Frames
+# Run the Augmentation and Save Frames as PNG
 # ----------------------------
 augmented_frames = augment_frames_with_trajectory_and_decision(frame_data_list, DECISION_TEXT)
 
@@ -93,7 +93,7 @@ print(f"✅ Saved {NUM_FRAMES} augmented frames with trajectory and decision ove
 import cv2
 import os
 
-# Folder with your saved frames
+# Folder with  saved frames
 frame_folder = "augmented_frames"
 video_filename = "final_output.mp4"
 
