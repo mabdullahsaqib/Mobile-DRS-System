@@ -1,5 +1,5 @@
 from typing import List, Dict
-from modules.trajectory_analysis.models.frame_models import Position3D, Velocity3D, Spin
+from modules.trajectory_analysis.models.Input_model import Position3D, Velocity3D, Spin
 
 # Constants
 GRAVITY = -9.81  # m/s²
@@ -40,7 +40,7 @@ def compute_trajectory(
         speed = (vel.x**2 + vel.y**2 + vel.z**2) ** 0.5
 
         # Drag force
-        drag_force = Velocity3D(0, 0, 0)
+        drag_force = Velocity3D(0, 0, 0) # type: ignore
         if speed > 1e-6:
             drag_magnitude = 0.5 * AIR_DENSITY * DRAG_COEFF * BALL_AREA * speed**2
             drag_force = Velocity3D(

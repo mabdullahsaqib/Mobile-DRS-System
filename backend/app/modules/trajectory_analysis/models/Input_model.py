@@ -1,10 +1,6 @@
 from pydantic import BaseModel
 from typing import List
 
-class Point2D(BaseModel):
-    x: int
-    y: int
-
 class StumpDetection(BaseModel):
     bbox: List[int]          
     confidence: float
@@ -23,3 +19,24 @@ class FrameInput(BaseModel):
     frame_id: int
     timestamp: float
     detections: Detections
+
+class Config:
+    extra = "ignore"
+
+class Position3D(BaseModel):
+    x: float
+    y: float
+    z: float
+
+class Velocity3D(BaseModel):
+    x: float
+    y: float
+    z: float
+
+class Spin(BaseModel):
+    rate: float
+    axis: Position3D
+
+class Point2D(BaseModel):
+    x: int
+    y: int
