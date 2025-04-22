@@ -32,28 +32,27 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
 
   Map<String, dynamic>? _clientData;
 
+  late ClientProvider _clientProvider;
+
   @override
   void initState() {
     super.initState();
     initializeCameras();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.isSecondary) {
+        _clientProvider = Provider.of<ClientProvider>(context, listen: false);
         _setupClientDataListener();
       }
     });
   }
 
   void _setupClientDataListener() {
-    // Get provider without listening
-    final clientProvider = Provider.of<ClientProvider>(context, listen: false);
-
     // Subscribe to changes
-    clientProvider.addListener(_handleClientDataChanges);
+    _clientProvider.addListener(_handleClientDataChanges);
   }
 
   void _handleClientDataChanges() {
-    final clientProvider = Provider.of<ClientProvider>(context, listen: false);
-    final newData = clientProvider.receivedData;
+    final newData = _clientProvider.receivedData;
 
     if (newData.isNotEmpty && newData != _clientData) {
       _clientData = newData;
@@ -72,7 +71,7 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
       }
 
       // Clear data after processing
-      clientProvider.clearReceivedData();
+      _clientProvider.clearReceivedData();
     }
   }
 
@@ -216,26 +215,26 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
 
     //Show a loading dialog while sending the video and pop it when done
 
-    // if (mounted) {
-    //   try {
-    //     await showDialog(
-    //       context: context,
-    //       barrierDismissible: false,
-    //       builder: (_) => AlertDialog(
-    //         content: Row(
-    //           children: [
-    //             const CircularProgressIndicator(),
-    //             const SizedBox(width: 16),
-    //             const Text("Sending video..."),
-    //           ],
-    //         ),
-    //       ),
-    //     );
-    //   } catch (e) {
-    //     print("Error showing dialog: $e");
-    //     return;
-    //   }
-    // }
+    if (mounted) {
+      try {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            content: Row(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 16),
+                const Text("Sending video..."),
+              ],
+            ),
+          ),
+        );
+      } catch (e) {
+        print("Error showing dialog: $e");
+        return;
+      }
+    }
     // Send the recording to server after showing the dialog
     await sendRecordingToServer(_videoPath);
   }
@@ -277,25 +276,13 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   }
 
   void clientPopScreen() {
-    if (!mounted) return;
-
     // Schedule navigation for the next frame, after any pending UI updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      // Schedule outside the current execution cycle with a microtask
-      Future.microtask(() {
-        if (!mounted) return;
-
-        try {
-          // Just do a simple pop instead of complex navigation
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          }
-        } catch (e) {
-          print("Navigation error: $e");
-        }
-      });
+      try {
+        Navigator.popUntil(context, ModalRoute.withName(AppRoutes.secondary));
+      } catch (e) {
+        print("Navigation error: $e");
+      }
     });
   }
 
@@ -303,9 +290,7 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   void dispose() {
     super.dispose();
     if (widget.isSecondary) {
-      final clientProvider =
-          Provider.of<ClientProvider>(context, listen: false);
-      clientProvider.removeListener(_handleClientDataChanges);
+      _clientProvider.removeListener(_handleClientDataChanges);
     }
     if (_controller != null) {
       _controller!.dispose();
@@ -349,26 +334,8 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
                   foregroundColor: Colors.black,
                   child: Icon(Icons.play_arrow),
                 ));
-      final clientProvider = context.watch<ClientProvider>();
-      if (!clientProvider.isConnected) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.pop(context);
-          scaffoldMessengerKey.currentState?.showSnackBar(
-            const SnackBar(content: Text("No connection to primary device")),
-          );
-        });
-      }
     } else {
       //Primary case
-      final serverProvider = context.watch<ServerProvider>();
-      if (!serverProvider.isRunning) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.pop(context);
-          scaffoldMessengerKey.currentState?.showSnackBar(
-            const SnackBar(content: Text("No connection to secondary device")),
-          );
-        });
-      }
     }
     return Scaffold(
         appBar: AppBar(

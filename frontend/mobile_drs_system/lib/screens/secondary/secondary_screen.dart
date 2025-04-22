@@ -49,10 +49,21 @@ class SecondaryScreenState extends State<SecondaryScreen> {
             builder: (context) => VideoRecordingScreen(isSecondary: true)));
   }
 
+  void _setupClientDataListener() {
+    _clientProvider.addListener(() {
+      if (_clientProvider.receivedData.isNotEmpty) {
+        updateReceivedData(_clientProvider.receivedData);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _clientProvider = Provider.of<ClientProvider>(context, listen: false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupClientDataListener();
+    });
   }
 
   @override
@@ -67,9 +78,7 @@ class SecondaryScreenState extends State<SecondaryScreen> {
   @override
   Widget build(BuildContext context) {
     final connectionController = context.watch<ConnectionController>();
-    final data = context.watch<ClientProvider>().receivedData;
     final isConnected = context.watch<ClientProvider>().isConnected;
-    updateReceivedData(data);
     return Scaffold(
       appBar: AppBar(title: const Text("Secondary (Leg Side)")),
       body: Center(
