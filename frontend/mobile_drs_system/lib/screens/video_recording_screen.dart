@@ -1,22 +1,14 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_media_store/flutter_media_store.dart';
-import 'package:mobile_drs_system/main.dart';
-import 'package:mobile_drs_system/models/command_type.dart';
-import 'package:mobile_drs_system/providers/network/client.dart';
-import 'package:mobile_drs_system/providers/network/server.dart';
 import 'package:mobile_drs_system/providers/video_save.dart';
 import 'package:mobile_drs_system/routes/app_routes.dart';
-import 'package:mobile_drs_system/utils/utils.dart';
 import 'package:provider/provider.dart';
 
 class VideoRecordingScreen extends StatefulWidget {
-  const VideoRecordingScreen({super.key, required this.isSecondary});
-  final bool isSecondary;
+  const VideoRecordingScreen({super.key});
   @override
   State<VideoRecordingScreen> createState() => _VideoRecordingScreenState();
 }
@@ -30,49 +22,10 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   Completer<void>? _recordingCompleter;
   Timer? _recordingTimer;
 
-  Map<String, dynamic>? _clientData;
-
-  late ClientProvider _clientProvider;
-
   @override
   void initState() {
     super.initState();
     initializeCameras();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.isSecondary) {
-        _clientProvider = Provider.of<ClientProvider>(context, listen: false);
-        _setupClientDataListener();
-      }
-    });
-  }
-
-  void _setupClientDataListener() {
-    // Subscribe to changes
-    _clientProvider.addListener(_handleClientDataChanges);
-  }
-
-  void _handleClientDataChanges() {
-    final newData = _clientProvider.receivedData;
-
-    if (newData.isNotEmpty && newData != _clientData) {
-      _clientData = newData;
-      // Process the data outside of build
-      if (_clientData != null) {
-        switch (commandFromString(_clientData!["type"])) {
-          case CommandType.startRecording:
-            clientStartRecording();
-            break;
-          case CommandType.stopRecording:
-            clientStopRecording();
-            break;
-          default:
-            break;
-        }
-      }
-
-      // Clear data after processing
-      _clientProvider.clearReceivedData();
-    }
   }
 
   void initializeCameras() async {
@@ -91,11 +44,9 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   }
 
   Future<void> serverStartRecording() async {
-    final serverProvider = context.read<ServerProvider>();
     if (_isRecording ||
         _controller == null ||
-        !_controller!.value.isInitialized ||
-        !serverProvider.isRunning) {
+        !_controller!.value.isInitialized) {
       throw Exception('Camera not ready');
     }
 
@@ -104,9 +55,6 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
     await _controller!.startVideoRecording();
     setState(() {
       _isRecording = true;
-      serverProvider.sendJSON({
-        "type": CommandType.startRecording.name,
-      });
     });
 
     // Automatically stop after duration seconds
@@ -126,15 +74,11 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   }
 
   Future<void> serverStopRecording() async {
-    final serverProvider = context.read<ServerProvider>();
     if (!_isRecording || _controller == null) return;
 
     final file = await _controller!.stopVideoRecording();
     setState(() {
       _isRecording = false;
-      serverProvider.sendJSON({
-        "type": CommandType.stopRecording.name,
-      });
     });
     //Once video recording is stopped, we save file to the device and then
     //return the path to the file
@@ -165,133 +109,13 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
     if (mounted) {
       final videoService = context.read<VideoSaveDataProvider>();
       videoService.setMainVideoPath(_videoPath);
-      Navigator.pushNamed(context, AppRoutes.masterWaiting);
+      Navigator.pushNamed(context, AppRoutes.videoPlayer);
     }
-  }
-
-//Client side functions
-  Future<void> clientStartRecording() async {
-    if (_isRecording || _controller == null) return;
-    await _controller!.startVideoRecording();
-    setState(() {
-      _isRecording = true;
-    });
-    _recordingCompleter = Completer<void>();
-    _recordingTimer = Timer(Duration(seconds: _duration), () {
-      _recordingCompleter?.complete();
-    });
-
-    await _recordingCompleter!.future;
-    if (_isRecording) {
-      await serverStopRecording();
-    }
-    _recordingTimer = null;
-    _recordingCompleter = null;
-  }
-
-  Future<void> clientStopRecording() async {
-    if (!_isRecording || _controller == null) return;
-    final file = await _controller!.stopVideoRecording();
-    print("Client stopped recording");
-    setState(() {
-      _isRecording = false;
-    });
-    //Once video recording is stopped, we save file to the device and then
-    //turn it to base64 and send it to the server
-    final flutterMediaStore = FlutterMediaStore();
-    await flutterMediaStore.saveFile(
-      fileData: await file.readAsBytes(),
-      fileName: '${DateTime.now().millisecondsSinceEpoch}_2.mp4',
-      mimeType: "video/mp4",
-      rootFolderName: "MobileDRS",
-      folderName: "Videos",
-      onError: (e) {
-        throw Exception("Error saving video: $e");
-      },
-      onSuccess: (uri, filePath) async {
-        _videoPath = filePath;
-      },
-    );
-
-    //Show a loading dialog while sending the video and pop it when done
-
-    if (mounted) {
-      try {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            content: Row(
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(width: 16),
-                const Text("Sending video..."),
-              ],
-            ),
-          ),
-        );
-      } catch (e) {
-        print("Error showing dialog: $e");
-        return;
-      }
-    }
-    // Send the recording to server after showing the dialog
-    await sendRecordingToServer(_videoPath);
-  }
-
-  Future<void> sendRecordingToServer(String filePath) async {
-    //Encode file as base64 string and send it and the filename
-    final clientProvider = context.read<ClientProvider>();
-    if (!clientProvider.isConnected) return;
-    final file = File(filePath);
-    if (!await file.exists()) {
-      print("File does not exist: $filePath");
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(content: Text("File does not exist :$filePath")),
-      );
-      return;
-    }
-    Uint8List bytes = await file.readAsBytes();
-    print("Encoding String");
-    final String base64String = await encodeBase64InIsolate(bytes);
-    final filename = file.path.split("/").last;
-    final data = {
-      "type": CommandType.sendRecording.name,
-      "data": await encodeJsonInIsolate({
-        "videoBase64": base64String,
-        "filename": filename,
-      }),
-    };
-    try {
-      await clientProvider.sendJSON(data);
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        const SnackBar(content: Text("Recording sent to server")),
-      );
-      clientPopScreen();
-    } catch (error) {
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(content: Text("Error sending recording: $error")),
-      );
-    }
-  }
-
-  void clientPopScreen() {
-    // Schedule navigation for the next frame, after any pending UI updates
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      try {
-        Navigator.popUntil(context, ModalRoute.withName(AppRoutes.secondary));
-      } catch (e) {
-        print("Navigation error: $e");
-      }
-    });
   }
 
   @override
   void dispose() {
     super.dispose();
-    if (widget.isSecondary) {
-      _clientProvider.removeListener(_handleClientDataChanges);
-    }
     if (_controller != null) {
       _controller!.dispose();
     }
@@ -316,27 +140,6 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
                 child: Icon(Icons.play_arrow),
               ));
 
-    if (widget.isSecondary) {
-      //Secondary case
-      //If the secondary device is recording show no buttons
-      buttons = Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: _isRecording
-              ? FloatingActionButton(
-                  onPressed: () {},
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  child: Icon(Icons.stop),
-                )
-              : FloatingActionButton(
-                  onPressed: () {},
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  child: Icon(Icons.play_arrow),
-                ));
-    } else {
-      //Primary case
-    }
     return Scaffold(
         appBar: AppBar(
           title: const Text('Video Recording'),

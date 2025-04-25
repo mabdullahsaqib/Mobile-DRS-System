@@ -14,7 +14,6 @@ class HomeScreen extends StatelessWidget {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          
           children: [
             // IMAGE WIDGET
             Image.asset(
@@ -34,9 +33,7 @@ class HomeScreen extends StatelessWidget {
                 );
               },
             ),
-            
           ],
-
         ),
       ),
     );

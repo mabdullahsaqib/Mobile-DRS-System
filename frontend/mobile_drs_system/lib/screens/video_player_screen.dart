@@ -5,10 +5,10 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 
 class VideoPlayerScreen extends StatefulWidget {
-  final String mainVideoPath;
-  final String secondaryVideoPath;
+  String mainVideoPath;
+  String secondaryVideoPath;
 
-  const VideoPlayerScreen({
+  VideoPlayerScreen({
     super.key,
     required this.mainVideoPath,
     required this.secondaryVideoPath,
@@ -22,24 +22,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late VideoSaveDataProvider _videoSaveDataProvider;
 
   late VideoPlayerController _mainVideoController;
-  late VideoPlayerController _secondaryVideoController;
 
   @override
   void initState() {
     super.initState();
     _videoSaveDataProvider =
         Provider.of<VideoSaveDataProvider>(context, listen: false);
+    if (widget.mainVideoPath.isEmpty) {
+      widget.mainVideoPath =
+          _videoSaveDataProvider.mainVideoPath; // Use the path from provider
+    }
     _videoSaveDataProvider.clearMainVideoPath();
-    _videoSaveDataProvider.clearSecondaryVideoPath();
-
     _mainVideoController = VideoPlayerController.file(
       File(widget.mainVideoPath),
-    )..initialize().then((_) {
-        setState(() {});
-      });
-
-    _secondaryVideoController = VideoPlayerController.file(
-      File(widget.secondaryVideoPath),
     )..initialize().then((_) {
         setState(() {});
       });
@@ -48,7 +43,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void dispose() {
     _mainVideoController.dispose();
-    _secondaryVideoController.dispose();
     super.dispose();
   }
 
@@ -64,15 +58,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               child: VideoPlayer(_mainVideoController),
             )
           else
-            CircularProgressIndicator(),
-          const SizedBox(height: 20),
-          if (_secondaryVideoController.value.isInitialized)
-            AspectRatio(
-              aspectRatio: _secondaryVideoController.value.aspectRatio,
-              child: VideoPlayer(_secondaryVideoController),
-            )
-          else
-            CircularProgressIndicator(),
+            CircularProgressIndicator()
         ],
       ),
     );
