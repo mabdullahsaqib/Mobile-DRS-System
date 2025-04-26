@@ -110,8 +110,21 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
     _shouldSave = true;
     _savingTimer = Timer.periodic(Duration(milliseconds: 33), (_) {
       if (_shouldSave) {
-        _positions.add(_kf.position);
-        _rotations.add(_kf.rotation);
+        _positions.add(
+          vm.Vector3(
+            double.parse(_kf.position.x.toStringAsFixed(2)),
+            double.parse(_kf.position.y.toStringAsFixed(2)),
+            double.parse(_kf.position.z.toStringAsFixed(2)),
+          ),
+        );
+
+        _rotations.add(
+          vm.Vector3(
+            double.parse(_kf.rotation.x.toStringAsFixed(2)),
+            double.parse(_kf.rotation.y.toStringAsFixed(2)),
+            double.parse(_kf.rotation.z.toStringAsFixed(2)),
+          ),
+        );
       }
     });
 
