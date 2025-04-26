@@ -1,11 +1,11 @@
 import 'dart:async';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_media_store/flutter_media_store.dart';
-import 'package:mobile_drs_system/providers/video_save.dart';
 import 'package:mobile_drs_system/routes/app_routes.dart';
-import 'package:provider/provider.dart';
+import 'package:mobile_drs_system/screens/kalan_filter.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'package:vector_math/vector_math_64.dart' as vm;
 
 class VideoRecordingScreen extends StatefulWidget {
   const VideoRecordingScreen({super.key});
@@ -22,10 +22,64 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   Completer<void>? _recordingCompleter;
   Timer? _recordingTimer;
 
+  vm.Vector3 _accel = vm.Vector3.zero();
+  vm.Vector3 _gyro = vm.Vector3.zero();
+  vm.Vector3 _mag = vm.Vector3.zero();
+
+  DateTime? _last;
+  final KalmanFilter _kf = KalmanFilter();
+
+  //List of Position and Rotation
+  final List<vm.Vector3> _positions = [];
+  final List<vm.Vector3> _rotations = [];
+  Timer? _savingTimer;
+  bool _shouldSave = false;
+
   @override
   void initState() {
     super.initState();
     initializeCameras();
+
+    _calibrateGyro();
+
+    accelerometerEvents
+        .listen((e) => setState(() => _accel = vm.Vector3(e.x, e.y, e.z)));
+    gyroscopeEvents
+        .listen((e) => setState(() => _gyro = vm.Vector3(e.x, e.y, e.z)));
+    magnetometerEvents
+        .listen((e) => setState(() => _mag = vm.Vector3(e.x, e.y, e.z)));
+
+    Future.delayed(Duration(seconds: 1), () {
+      _kf.initializeFromAccel(_accel);
+    });
+
+    Timer.periodic(Duration(milliseconds: 20), (_) => _updateFusion());
+  }
+
+  void _calibrateGyro() {
+    vm.Vector3 sum = vm.Vector3.zero();
+    int count = 0;
+    StreamSubscription<GyroscopeEvent>? sub;
+    sub = gyroscopeEvents.listen((e) {
+      if (count < 100) {
+        sum += vm.Vector3(e.x, e.y, e.z);
+        count++;
+      } else {
+        _kf.calibrateGyroBias(sum / count.toDouble());
+        sub?.cancel();
+      }
+    });
+  }
+
+  void _updateFusion() {
+    final now = DateTime.now();
+    if (_last == null) {
+      _last = now;
+      return;
+    }
+    double dt = now.difference(_last!).inMilliseconds.clamp(1, 50) / 1000.0;
+    _last = now;
+    _kf.update(dt: dt, accel: _accel, gyro: _gyro, mag: _mag);
   }
 
   void initializeCameras() async {
@@ -50,9 +104,17 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
       throw Exception('Camera not ready');
     }
 
-    //Tell client to start recording
-
     await _controller!.startVideoRecording();
+
+    //Sace the position and rotation of the camera every 33ms (30fps)
+    _shouldSave = true;
+    _savingTimer = Timer.periodic(Duration(milliseconds: 33), (_) {
+      if (_shouldSave) {
+        _positions.add(_kf.position);
+        _rotations.add(_kf.rotation);
+      }
+    });
+
     setState(() {
       _isRecording = true;
     });
@@ -77,6 +139,12 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
     if (!_isRecording || _controller == null) return;
 
     final file = await _controller!.stopVideoRecording();
+
+    //Stop saving the position and rotation of the camera
+    _shouldSave = false;
+    _savingTimer?.cancel();
+    _savingTimer = null;
+
     setState(() {
       _isRecording = false;
     });
@@ -107,9 +175,15 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
     //Pop the screen and start waiting in the waitingScreen for the secondary device to send the video
     //This is used to show the secondary video after the recording is done
     if (mounted) {
-      final videoService = context.read<VideoSaveDataProvider>();
-      videoService.setMainVideoPath(_videoPath);
-      Navigator.pushNamed(context, AppRoutes.videoPlayer);
+      Navigator.pushNamed(
+        context,
+        AppRoutes.videoPlayer,
+        arguments: VideoPlayerScreenArguments(
+          mainVideoPath: _videoPath,
+          cameraPositions: _positions,
+          cameraRotations: _rotations,
+        ),
+      );
     }
   }
 

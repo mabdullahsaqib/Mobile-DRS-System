@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_drs_system/providers/video_save.dart';
 import 'package:mobile_drs_system/routes/app_routes.dart';
-import 'package:provider/provider.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
 void main() {
-  runApp(MultiProvider(providers: [
-    ChangeNotifierProvider(create: (_) => VideoSaveDataProvider()),
-  ], child: const MainApp()));
+  runApp(const MainApp());
 }
 
 class MainApp extends StatelessWidget {
@@ -22,6 +18,7 @@ class MainApp extends StatelessWidget {
       scaffoldMessengerKey: scaffoldMessengerKey,
       initialRoute: AppRoutes.home,
       routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,

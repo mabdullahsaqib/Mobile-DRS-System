@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_drs_system/utils/utils.dart';
-import 'select_screen.dart';
+import './master_screen.dart';
 import '../widgets/role_button.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -29,7 +29,7 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SelectScreen()),
+                  MaterialPageRoute(builder: (_) => const MasterScreen()),
                 );
               },
             ),

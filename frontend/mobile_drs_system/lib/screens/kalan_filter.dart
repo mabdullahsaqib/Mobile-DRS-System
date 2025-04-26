@@ -1,6 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:sensors_plus/sensors_plus.dart';
-import 'dart:async';
 import 'dart:math';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -75,7 +72,6 @@ class KalmanFilter {
     // 5) Magnetometer-based yaw calculation
     final normA = filtAccel.normalized();
     final east = filtMag.cross(normA).normalized();
-    final north = normA.cross(east).normalized();
     double accelYaw = atan2(east.y, east.x);
 
     // 6) Kalman gains
@@ -121,109 +117,5 @@ class KalmanFilter {
     // 12) Velocity & position update (HPF)
     velocity = velocity * 0.98 + linear * dt * 0.02;
     position += velocity * dt;
-  }
-}
-
-class SensorFusionPositionScreen extends StatefulWidget {
-  @override
-  _SensorFusionPositionScreenState createState() =>
-      _SensorFusionPositionScreenState();
-}
-
-class _SensorFusionPositionScreenState
-    extends State<SensorFusionPositionScreen> {
-  Vector3 _accel = Vector3.zero();
-  Vector3 _gyro = Vector3.zero();
-  Vector3 _mag = Vector3.zero();
-
-  DateTime? _last;
-  late Timer _timer;
-  final KalmanFilter _kf = KalmanFilter();
-
-  @override
-  void initState() {
-    super.initState();
-    _calibrateGyro();
-
-    accelerometerEvents
-        .listen((e) => setState(() => _accel = Vector3(e.x, e.y, e.z)));
-    gyroscopeEvents
-        .listen((e) => setState(() => _gyro = Vector3(e.x, e.y, e.z)));
-    magnetometerEvents
-        .listen((e) => setState(() => _mag = Vector3(e.x, e.y, e.z)));
-
-    Future.delayed(Duration(seconds: 1), () {
-      _kf.initializeFromAccel(_accel);
-    });
-
-    _timer = Timer.periodic(Duration(milliseconds: 20), (_) => _updateFusion());
-  }
-
-  void _calibrateGyro() {
-    Vector3 sum = Vector3.zero();
-    int count = 0;
-    StreamSubscription<GyroscopeEvent>? sub;
-    sub = gyroscopeEvents.listen((e) {
-      if (count < 100) {
-        sum += Vector3(e.x, e.y, e.z);
-        count++;
-      } else {
-        _kf.calibrateGyroBias(sum / count.toDouble());
-        sub?.cancel();
-      }
-    });
-  }
-
-  void _updateFusion() {
-    final now = DateTime.now();
-    if (_last == null) {
-      _last = now;
-      return;
-    }
-    double dt = now.difference(_last!).inMilliseconds.clamp(1, 50) / 1000.0;
-    _last = now;
-    _kf.update(dt: dt, accel: _accel, gyro: _gyro, mag: _mag);
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  String fmtV3(Vector3 v, int prec) =>
-      '(${v.x.toStringAsFixed(prec)}, ${v.y.toStringAsFixed(prec)}, ${v.z.toStringAsFixed(prec)})';
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Sensor Fusion Debug')),
-      body: Padding(
-        padding: EdgeInsets.all(24),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Orientation (rad): ' + fmtV3(_kf.rotation, 3)),
-              SizedBox(height: 8),
-              Text('Position (m): ' + fmtV3(_kf.position, 2)),
-              Text('Velocity (m/s): ' + fmtV3(_kf.velocity, 2)),
-              SizedBox(height: 12),
-              Text('Raw Sensors:'),
-              Text('  Accel : ' + fmtV3(_accel, 2)),
-              Text('  Gyro  : ' + fmtV3(_gyro, 2)),
-              Text('  Mag   : ' + fmtV3(_mag, 2)),
-              SizedBox(height: 12),
-              Text('Gravity (unit g): ' + fmtV3(_kf.gravity, 2)),
-              Text('Linear Accel (m/s²): ' + fmtV3(_kf.linear, 2)),
-              SizedBox(height: 12),
-              Text('Debug:'),
-              Text('  StillCount = ${_kf.stillCount}'),
-              Text('  GyroBias = ' + fmtV3(_kf.biasGyro, 3)),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

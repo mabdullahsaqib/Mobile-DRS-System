@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../providers/video_save.dart';
+import 'package:vector_math/vector_math_64.dart';
 import 'package:video_player/video_player.dart';
-import 'package:provider/provider.dart';
 import 'dart:io';
 
 class VideoPlayerScreen extends StatefulWidget {
-  String mainVideoPath;
-  String secondaryVideoPath;
+  final String mainVideoPath;
+  final List<Vector3> cameraPositions;
+  final List<Vector3> cameraRotations;
 
-  VideoPlayerScreen({
+  const VideoPlayerScreen({
     super.key,
     required this.mainVideoPath,
-    required this.secondaryVideoPath,
+    required this.cameraPositions,
+    required this.cameraRotations,
   });
 
   @override
@@ -19,25 +20,14 @@ class VideoPlayerScreen extends StatefulWidget {
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
-  late VideoSaveDataProvider _videoSaveDataProvider;
-
   late VideoPlayerController _mainVideoController;
 
   @override
   void initState() {
     super.initState();
-    _videoSaveDataProvider =
-        Provider.of<VideoSaveDataProvider>(context, listen: false);
-    if (widget.mainVideoPath.isEmpty) {
-      widget.mainVideoPath =
-          _videoSaveDataProvider.mainVideoPath; // Use the path from provider
-    }
-    _videoSaveDataProvider.clearMainVideoPath();
     _mainVideoController = VideoPlayerController.file(
       File(widget.mainVideoPath),
-    )..initialize().then((_) {
-        setState(() {});
-      });
+    );
   }
 
   @override
@@ -52,13 +42,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       appBar: AppBar(title: Text('Video Player')),
       body: Column(
         children: [
-          if (_mainVideoController.value.isInitialized)
-            AspectRatio(
-              aspectRatio: _mainVideoController.value.aspectRatio,
-              child: VideoPlayer(_mainVideoController),
-            )
-          else
-            CircularProgressIndicator()
+          Text("Main Video Path: ${widget.mainVideoPath}"),
+          Text("Camera Positions: ${widget.cameraPositions}"),
+          Text("Camera Rotatations: ${widget.cameraRotations}"),
         ],
       ),
     );
