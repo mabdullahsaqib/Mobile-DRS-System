@@ -25,6 +25,8 @@ dependencies:
   path_provider: ^2.0.14
   just_audio: ^0.9.34
   video_thumbnail: ^0.5.3
+  ffmpeg_kit_flutter_full_gpl: ^6.0.0
+  ffmpeg_kit_flutter: ^6.0.0
 
 dev_dependencies:
   flutter_test:
