@@ -25,7 +25,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    processVideo(widget.mainVideoPath, 30, widget.cameraPositions,
+    processVideo(widget.mainVideoPath, widget.cameraPositions,
             widget.cameraRotations)
         .then((value) {
       setState(() {
