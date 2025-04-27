@@ -1,9 +1,9 @@
 
 from datetime import datetime
-from backend.app.modules.trajectory_analysis.models.Input_model import (
+from modules.trajectory_analysis.models.Input_model import (
     FrameInput, Position3D, Velocity3D, Spin
 )
-from backend.app.modules.trajectory_analysis.models.Output_model import (
+from modules.trajectory_analysis.models.Output_model import (
     TrajectoryAnalysisResult,
     PredictedPoint,
     SwingCharacteristics
@@ -13,7 +13,7 @@ from backend.app.modules.trajectory_analysis.models.Output_model import (
 
 def compute_trajectory(position: Position3D, velocity: Velocity3D, spin: Spin) -> list[PredictedPoint]:
     """
-    Simulates a basic projectile trajectory — replace with your actual physics.
+    Simulates a basic projectile trajectory
     """
     points = []
     time_step = 0.05
