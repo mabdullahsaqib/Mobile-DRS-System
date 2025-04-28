@@ -1,1 +1,9 @@
+# .gitignore
+__pycache__/
+*.log
+*.pyc
+.env
+.vscode/
+output/
+
 frontend/mobile_drs_system/linux/flutter/generated_plugin_registrant.h
