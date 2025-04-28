@@ -1,0 +1,14 @@
+flutter_native_splash:
+  android: true
+  ios: true
+  web: false
+
+#  color: "#d4e4ed"
+  background_image: "assets/mobileDRS_bg.png"
+  image: "assets/mobileDRS_logo.png"
+  branding: "assets/mobileDRS_branding.png"
+
+  android_12:
+    color: "#515169"
+    image: "assets/mobileDRS_logo.png"
+    branding: "assets/mobileDRS_branding.png"
