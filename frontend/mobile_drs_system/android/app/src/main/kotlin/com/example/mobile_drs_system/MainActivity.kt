@@ -26,8 +26,18 @@ class MainActivity : FlutterActivity() {
                 val videoPath = call.argument<String>("videoPath") ?: ""
                 val outputDir = call.argument<String>("outputDir") ?: ""
                 if (videoPath.isNotEmpty() && outputDir.isNotEmpty()) {
-                    val framePaths = extractFrames(videoPath, outputDir)
-                    result.success(framePaths)
+                    Thread{
+                        try{
+
+                            val framePaths = extractFrames(videoPath, outputDir)
+                            result.success(framePaths)
+                        }
+                        catch (e: Exception) {
+                            activity.runOnUiThread {
+                                result.error("FRAME_EXTRACTION_FAILED", e.message, null)
+                            }
+                        }
+                    }.start()
                 } else {
                     result.error("INVALID_ARGUMENTS", "Video path or output directory is empty", null)
                 }
