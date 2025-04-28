@@ -1,4 +1,4 @@
-package com.example.flutter_method_channel
+package com.example.mobile_drs_system
 
 import android.graphics.Bitmap
 import android.media.MediaExtractor
@@ -14,7 +14,7 @@ import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example/video_frames_extractor"
+    private val CHANNEL = "com.example.video_frames_extractor"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
