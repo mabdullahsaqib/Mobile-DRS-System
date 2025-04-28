@@ -1,0 +1,92 @@
+Class, it’s time to move forward with Sprint 1 for the DRS System. You’ve already gathered the requirements and defined the modules, and now you’ll begin the development phase with clear guidelines and expectations.
+Key Instructions:
+
+    Sprint 1 Setup:
+
+        Sprint duration: 7 days, starting 15th April 2025 and ending 20th April 2025 at 12:00 PM.
+
+        Each batch (3 batches in total) must:
+
+            Create a Jira workspace using the Sprint template.
+
+            Define stories under Sprint 1, ensuring they are detailed, aligned with the project timeline, and consistent. Dates will be monitored.
+
+            Add me (l201362@lhr.nu.edu.pk) and Sir Zeeshan Rana (zeeshan.rana@nu.edu.pk) to your Jira workspaces as members.
+
+    GitHub Repository Setup:
+
+        Each batch must create one GitHub repository (total: 3 repositories).
+
+        Add me (bilal-os) and Sir Zeeshan Rana (zeeshan.rana@nu.edu.pk) as collaborators.
+
+        Create the following branches in the repository:
+
+            6 module branches (assigned to groups as follows):
+
+                Mobile UI (Camera Module)
+
+                Ball and Object Tracking Module
+
+                Bat’s Edge Detection Module
+
+                Trajectory Analysis Module
+
+                Decision Making Module
+
+                Stream Analysis and Overlay Module
+
+            Staging branch
+
+            Production branch
+
+    Branch Usage and CI Guidelines:
+
+        Each group works exclusively on their assigned module branch.
+
+        Sub-branches can only be created from the respective module branch.
+
+        Implement proper Continuous Integration (CI) workflows.
+
+        At the end of Sprint 1:
+
+            Submit pull requests from module branches to the staging branch for integration.
+
+            After testing, merge the staging branch into the production branch.
+
+    Performance Tracking:
+
+        Jira stories and timelines must be consistent.
+
+        Every group member is expected to contribute actively. Git commits and pushes will be monitored.
+
+        Any member without a visible commit history will face strict consequences.
+
+    Parallel Development:
+
+        All groups can work in parallel as the interfaces and input/output definitions for each module have already been finalized.
+
+Deadlines
+
+    Jira Workspace and GitHub Repository Setup:
+
+        Deadline to create Jira workspaces, define Sprint 1 stories, and add required members: 15th April 2025 by 12:00 PM.
+
+        Deadline to create GitHub repositories, set up all branches, and add required collaborators: 15th April 2025 by 12:00 PM.
+
+    Sprint 1 Completion:
+
+        All development tasks, commits, and pushes must be completed by: 20th April 2025 at 12:00 PM.
+
+        Any commit or push made after this time will result in heavy penalties.
+
+    Sprint 1 Evaluation:
+
+        Evaluation of Sprint 1 will take place on 22nd April 2025.
+
+Important Notes
+
+    Focus on the process, not just the development. Proper Jira sprints, consistent commits, and collaboration are the priorities.
+
+    If you need an online session for further clarification or assistance, feel free to reach out to me.
+
+Failure to comply with the above guidelines will result in significant penalties. Take this project seriously, and ensure every team member is contributing consistently throughout the sprint.
