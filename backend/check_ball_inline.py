@@ -28,4 +28,9 @@ async def check_ball_inline(request: Request):
 
     return JSONResponse(content={'inline': inline})
 
+@app.post("/bat_edge_detect")
+async def bat_edge_detect(request: Request):
+    data = await request.json()
+    return {"edge_detected": data['edge_detected']}
+
 
