@@ -1,11 +1,30 @@
-from fastapi.testclient import TestClient
-from check_ball_inline import app 
+from fastapi import FastAPI
 
-# Create a TestClient instance
-client = TestClient(app)
+app = FastAPI()
 
-# Sample input data for the request
-data = {
+@app.get("/module4_combined_data")
+async def get_combined_data():
+    # This is the combined data returned by the GET endpoint
+    data = {
+    "ball_trajectory": {
+        "positions": [
+            {"x": 4, "y": 1.2, "z": 5.0},
+            {"x": 5, "y": 0.9, "z": 5.2},
+            {"x": 6, "y": 0.6, "z": 5.0},
+            {"x": 7, "y": 0.3, "z": 4.7},
+            {"x": 8, "y": 0.01, "z": 4.5}  # Impact point: x = 8, z = 4.5
+        ]
+    },
+    "stumps_data": {
+        "position": {
+            "base_center": {"x": 8}
+        },
+        "individual_stumps": [
+            {"top_position": {"x": 8, "y": 0.71, "z": 6.7}},
+            {"top_position": {"x": 8, "y": 0.71, "z": 6.8}},
+            {"top_position": {"x": 8, "y": 0.71, "z": 6.9}}
+        ]
+    },
     "frame_id": 1542,
     "timestamp": "2025-04-02T11:02:47.123Z",
     "processing_timestamp": "2025-04-02T11:02:47.150Z",
@@ -57,14 +76,18 @@ data = {
             "code": "TOO_MUCH_NOISE",
             "severity": "high"
         }
-    ]
+    ],
+    "original_frames": [
+        "base64encodedframe1",
+        "base64encodedframe2"
+    ],
+    "predicted_path": [
+        [10.5, 5.3, 1.2],
+        [11.0, 5.5, 1.3],
+        [11.5, 5.7, 1.4]
+    ],
+    "will_hit_stumps": True
 }
 
-# Send a POST request to the FastAPI endpoint using TestClient
-response = client.post("/bat_edge_detect", json=data)
 
-# Print the response from the server
-if response.status_code == 200:
-    print("Response from server:", response.json())
-else:
-    print(f"Failed to get response, status code: {response.status_code}")
+    return data

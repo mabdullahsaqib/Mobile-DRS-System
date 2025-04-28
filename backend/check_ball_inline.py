@@ -1,12 +1,12 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from Module4 import app as module4_app
 
+client = TestClient(module4_app)
 app = FastAPI()
+MODULE_4_URL = "http://127.0.0.1:8001/module4_combined_data"
 
-@app.post("/check_ball_inline")
-async def check_ball_inline(request: Request):
-    data = await request.json()
-
+def check_ball_inline(data):
     positions = data['ball_trajectory']['positions']
     stumps = data['stumps_data']
 
@@ -14,7 +14,7 @@ async def check_ball_inline(request: Request):
     impact_position = next((p for p in positions if abs(p['y']) <= 0.01), None)
 
     if not impact_position:
-        return JSONResponse(content={'inline': False})
+        return {'inline': False}
 
     x_impact = impact_position['x']
     z_impact = impact_position['z']
@@ -26,11 +26,26 @@ async def check_ball_inline(request: Request):
     # Check if the ball hit the ground within the x range of the stumps
     inline = (abs(x_impact - stumps_x) < 0.2) and (stump_z_min <= z_impact <= stump_z_max)
 
-    return JSONResponse(content={'inline': inline})
+    return {'inline': inline}
 
-@app.post("/bat_edge_detect")
-async def bat_edge_detect(request: Request):
-    data = await request.json()
+def bat_edge_detect(data):
     return {"edge_detected": data['edge_detected']}
 
+def wicket_impact(data):
+    return {"will_hit_stumps": data['will_hit_stumps']}
 
+@app.get("/finaldecision")
+def final_decision():
+    response = client.get(MODULE_4_URL)
+    data = response.json()
+
+    # Call the functions directly
+    inline = check_ball_inline(data)
+    edge_detected = bat_edge_detect(data)
+    will_hit_stumps = wicket_impact(data)
+
+    return {
+        "inline": inline["inline"],
+        "edge_detected": edge_detected["edge_detected"],
+        "will_hit_stumps": will_hit_stumps["will_hit_stumps"]
+    }
