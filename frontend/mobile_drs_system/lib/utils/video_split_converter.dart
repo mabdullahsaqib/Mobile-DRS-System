@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 class VideoFrameExtractor {
-  static const platform = MethodChannel('com.example.video_frames');
+  static const platform = MethodChannel('com.example.video_frames_extractor');
 
   static Future<List<String>> extractFrames({
     required String videoPath,
