@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
-
 class Position(BaseModel):
     x: float
     y: float
