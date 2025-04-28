@@ -14,6 +14,7 @@ class SwingCharacteristics(BaseModel):
     spin_axis: Position3D
     drag_coefficient: float
     bounce_coefficient: float
+    
 
 class TrajectoryAnalysisResult(BaseModel):
     frame_id: int

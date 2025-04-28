@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter
 from modules.trajectory_analysis.models.Input_model import FrameInput
 from modules.trajectory_analysis.models.Output_model import TrajectoryAnalysisResult
@@ -11,6 +12,6 @@ router = APIRouter()
     summary="Run trajectory analysis on an incoming frame"
 )
 async def analyze_trajectory(
-    frame: FrameInput
+    frame: List[FrameInput]
 ) -> TrajectoryAnalysisResult:
     return process_frame(frame)
