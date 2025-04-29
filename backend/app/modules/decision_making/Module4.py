@@ -2,7 +2,6 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-@app.get("/module4_combined_data")
 async def get_combined_data():
     # This is the combined data returned by the GET endpoint
     data = {
