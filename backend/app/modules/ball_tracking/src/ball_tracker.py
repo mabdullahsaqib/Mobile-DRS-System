@@ -7,6 +7,9 @@ Ball Tracker Module
 This module is responsible for tracking the cricket ball across video frames,
 calculating its trajectory, velocity, acceleration, and spin.
 
+Team Member Responsibilities:
+----------------------------
+Member 4: Ball tracking algorithms, trajectory calculation, and physics modeling
 """
 
 import cv2
@@ -15,6 +18,16 @@ from typing import Dict, List, Any, Tuple, Optional
 import math
 
 class BallTracker:
+    """
+    Tracks cricket ball across frames and calculates trajectory data.
+    
+    This class implements algorithms to track the ball's position across frames,
+    calculate its 3D coordinates, velocity, acceleration, and spin.
+    
+    Team Member Responsibilities:
+    ----------------------------
+    Member 4: Implementation of tracking algorithms and physics calculations
+    """
     
     def __init__(self, config: Dict[str, Any]):
         """
@@ -32,6 +45,7 @@ class BallTracker:
         self.gravity = config.get("gravity", 9.8)
         self.air_resistance_coef = config.get("air_resistance", 0.1)
         self.frame_rate = config.get("frame_rate", 30)  # fps
+        
         # Kalman filter parameters
         self.use_kalman = config.get("use_kalman", True)
         if self.use_kalman:
@@ -58,8 +72,6 @@ class BallTracker:
         self.tracking_lost_frames = 0
         self.max_lost_frames = config.get("max_lost_frames", 10)
     
-    
-    #for next sprint, stil researching
     def _init_kalman_filter(self):
         """Initialize Kalman filter for ball tracking."""
         # State: [x, y, z, vx, vy, vz, ax, ay, az]
@@ -99,6 +111,32 @@ class BallTracker:
         # Error covariance
         self.kalman.errorCovPost = np.eye(9, dtype=np.float32)
     
+    def detect_ball_color(self,frame:np.ndarray) -> Optional[Tuple[Tuple[int,int],int]]:
+        """ Detect ball using color filtering
+        Args: frame:Input frame
+        Returns: tuple of (center,radius) or NONE(not detected)
+        """
+
+        hsv=cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
+        #ball mask
+        mask=cv2.inRange(hsv,self.color_lower,self.color_upper)
+        #noise removal
+        mask=cv2.erode(mask,None,iterations=2)
+        mask=cv2.dilate(mask,None,iterations=2)
+
+        contours=cv2.findContours(mask.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+        contours=contours[0] if len(contours) == 2 else contours[1]
+
+        #if at least 1 contour is found
+        if len(contours) >0:
+            c=max(contours,key=cv2.contourArea) # max contour finder
+            ((x,y),radius) = cv2.minEnclosingCircle(c)
+
+            if radius>self.min_radius:
+                return ((int(x),int(y)),int(radius))
+        
+        return None
+
     def set_calibration(self, camera_matrix, dist_coeffs):
         """
         Set camera calibration parameters for 3D reconstruction.
@@ -128,8 +166,18 @@ class BallTracker:
         
         # If no ball detected
         if not ball_detections:
-            return self._handle_missing_detection(historical_positions)
-        
+            colour_detection=self.detect_ball_color(frame)
+            if colour_detection:
+                center,radius=colour_detection
+                ball_detections=[{
+                    "center": center,
+                    "radius":radius,
+                    "confidence":0.8
+                }]
+            # 
+            if not ball_detections:
+                return self._handle_missing_detection(historical_positions)
+
         # Get the most confident ball detection
         ball_detection = max(ball_detections, key=lambda x: x["confidence"])
         
@@ -155,7 +203,15 @@ class BallTracker:
                                               historical_positions)
     
     def _handle_missing_detection(self, historical_positions: List[Dict[str, Any]]) -> Dict[str, Any]:
-
+        """
+        Handle the case when ball is not detected in the current frame.
+        
+        Args:
+            historical_positions: Previous ball positions
+            
+        Returns:
+            Estimated ball trajectory data or None
+        """
         if not self.is_tracking:
             return None
         
@@ -182,6 +238,12 @@ class BallTracker:
         return self._calculate_trajectory_data(predicted_position, confidence, historical_positions)
     
     def _initialize_tracking(self, position: np.ndarray):
+        """
+        Initialize tracking with the first detected position.
+        
+        Args:
+            position: 3D position of the ball
+        """
         self.is_tracking = True
         self.last_position = position
         self.last_velocity = np.zeros(3)
@@ -195,7 +257,12 @@ class BallTracker:
             self.kalman.statePost[6:] = np.array([[0], [-self.gravity], [0]], np.float32)
     
     def _update_tracking(self, position: np.ndarray):
-
+        """
+        Update tracking with a new detected position.
+        
+        Args:
+            position: 3D position of the ball
+        """
         dt = 1.0 / self.frame_rate
         
         if self.use_kalman:

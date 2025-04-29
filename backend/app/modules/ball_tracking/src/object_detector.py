@@ -5,7 +5,12 @@
 Object Detector Module
 
 This module is responsible for detecting cricket-related objects in video frames,
-including the ball, stumps, batsman, and bat. Support for Deep Learning may be added later.
+including the ball, stumps, batsman, and bat. It uses a combination of traditional
+computer vision techniques and deep learning approaches.
+
+Team Member Responsibilities:
+----------------------------
+Member 3: Object detection implementation, model training/integration, and detection optimization
 """
 
 import cv2
@@ -14,6 +19,13 @@ from typing import Dict, List, Any, Tuple
 
 class ObjectDetector:
     """
+    Detects cricket-related objects in frames.
+    
+    This class implements detection algorithms for cricket balls, stumps,
+    batsmen, and bats.
+    
+    Team Member Responsibilities:
+    ----------------------------
     All Members made combined effort :)
     """
     
@@ -25,10 +37,12 @@ class ObjectDetector:
             config: Dictionary containing configuration parameters
         """
         self.config = config
-        self.detection_method = config.get("detection_method", "traditional")
+        self.detection_method = config.get("detection_method", "hybrid")
         self.confidence_threshold = config.get("confidence_threshold", 0.5)
         
-        
+        # Initialize detection models based on method
+        if self.detection_method in ["deep_learning", "hybrid"]:
+            self._init_deep_learning_models()
         
         # Initialize traditional CV parameters
         self._init_traditional_cv_params()
@@ -36,6 +50,7 @@ class ObjectDetector:
     
        
     def _init_traditional_cv_params(self):
+        """Initialize parameters for traditional computer vision approaches."""
         # tuned for yellow ball
         self.ball_color_lower = np.array([30,150,150], dtype=np.uint8)
         self.ball_color_upper = np.array([40,255,255], dtype=np.uint8)
@@ -53,33 +68,13 @@ class ObjectDetector:
         self.hog = cv2.HOGDescriptor()
         self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
     
-    
-    def isolate_objects(self, frame):
-        """
-        Isolate ball and stumps from the frame using color filtering.
-        """
-        # Convert frame to HSV
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-        # Create ball mask
-        ball_mask = cv2.inRange(hsv, self.ball_color_lower, self.ball_color_upper)
-
-        # Create stump mask
-        stump_mask = cv2.inRange(hsv, self.stump_color_lower, self.stump_color_upper)
-
-        # Combine masks
-        combined_mask = cv2.bitwise_or(ball_mask, stump_mask)
-
-        # Apply the mask to the frame
-        result = cv2.bitwise_and(frame, frame, mask=combined_mask)
-
-        return result, combined_mask
-    
     def detect(self, frame: np.ndarray) -> Dict[str, List[Dict[str, Any]]]:
         """
         Detect objects in the frame.
+        
         Args:
-            frame: Input frame as numpy array            
+            frame: Input frame as numpy array
+            
         Returns:
             Dictionary containing detection results for each object type
         """
@@ -113,7 +108,21 @@ class ObjectDetector:
        
         results["stumps"] = stump_detections
 
+      
+        # For batsman and bat, traditional methods are less reliable
+        # In a real implementation, these would use more sophisticated techniques
+        # For now, we'll use traditional method
+    
     def _detect_ball_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
+        """
+        Detect cricket ball using traditional CV techniques.
+        
+        Args:
+            frame: Input frame
+            
+        Returns:
+            List of ball detection results
+        """
         hsv  = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv,
                         self.ball_color_lower,
@@ -139,13 +148,32 @@ class ObjectDetector:
         return balls
     
     def _detect_stumps_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
-
+        """
+        Detect stumps using traditional CV techniques.
+        
+        Args:
+            frame: Input frame
+            
+        Returns:
+            List of stump detection results
+        """
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
         # stumps
         lower = np.array([10,  80,  80], dtype=np.uint8)   # H:5–35, S:60–255, V:60–255
         upper = np.array([40, 255, 255], dtype=np.uint8)
         mask  = cv2.inRange(hsv, lower, upper)
+
+        # 3) clean up noise
+        # kernel = np.ones((5,5), np.uint8)
+        # mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  kernel, iterations=2)
+        # mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+        # mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+        #  # **DEBUG: show mask side‑by‑side**
+        # cv2.imshow("frame", frame)
+        # cv2.imshow("stump_mask", mask)
+        # cv2.waitKey(1)   
 
         contours, _ = cv2.findContours(mask,
                                        cv2.RETR_EXTERNAL,

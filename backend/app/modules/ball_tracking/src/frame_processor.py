@@ -1,3 +1,17 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Frame Processor Module
+
+This module is responsible for processing input video frames, including decoding,
+preprocessing, and preparing frames for object detection and tracking.
+
+Team Member Responsibilities:
+----------------------------
+Member 2: Frame processing, image preprocessing, and optimization for mobile devices
+"""
+
 import cv2
 import numpy as np
 import base64
@@ -10,9 +24,18 @@ class FrameProcessor:
     Handles frame decoding, resizing, color conversion, and other preprocessing
     steps to prepare frames for object detection and tracking.
     
+    Team Member Responsibilities:
+    ----------------------------
+    Member 2: Implementation and optimization of all frame processing methods
     """
     
     def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize the Frame Processor with configuration.
+        
+        Args:
+            config: Dictionary containing configuration parameters
+        """
         self.config = config
         self.target_size = config.get("target_size", (640, 480))
         self.use_gpu = config.get("use_gpu", False)
