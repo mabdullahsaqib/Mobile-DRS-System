@@ -1,0 +1,13 @@
+{
+  "object_detector": {
+    "detection_method": "traditional",
+    "confidence_threshold": 0.5
+ 
+},
+    "frame_processor": {
+        "target_size": null,
+        "enhance_contrast": true,
+        "reduce_noise": true
+    }
+  }
+  
