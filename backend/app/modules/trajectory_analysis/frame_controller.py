@@ -1,13 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
-from modules.trajectory_analysis.controllers.frame_stumps import StumpTracker
-from modules.trajectory_analysis.models.Input_model import (
+from frame_stumps import StumpTracker
+from Input_model import (
     FrameInput,
     Position3D,
+    StumpDetection,
     Velocity3D,
     Spin,
 )
-from modules.trajectory_analysis.models.Output_model import (
+from Output_model import (
     TrajectoryAnalysisResult,
     PredictedPoint,
     SwingCharacteristics,
@@ -28,7 +29,7 @@ def compute_trajectory(
         new_position = Position3D(
             x=position.x + velocity.x * t,
             y=position.y + velocity.y * t,
-            z=position.z + velocity.z * t - 0.5 * 9.8 * t * t,  # gravity
+            z=position.z + velocity.z * t - 0.5 * 9.8 * t * t,
         )
         new_velocity = Velocity3D(x=velocity.x, y=velocity.y, z=velocity.z - 9.8 * t)
         points.append(
@@ -52,9 +53,21 @@ def get_ball_positions(frames: List[FrameInput]) -> List[List[float]]:
     return positions
 
 
+def get_stump_positions(frames: List[FrameInput]) -> List[List[StumpDetection]]:
+    all_stump_positions: List[List[StumpDetection]] = []
+    for frame in frames:
+        stumps = frame.detections.stumps
+        if len(stumps) == 3:
+            all_stump_positions.append(stumps)
+
+    return all_stump_positions
+
+
 def estimate_spin() -> Spin:
     return Spin(rate=30.0, axis=Position3D(x=0.0, y=0.0, z=1.0))
 
+
+stump_tracker = StumpTracker(jitter_threshold=3)
 
 def process_frame(frame: List[FrameInput]) -> TrajectoryAnalysisResult:
     # position, velocity = estimate_position_and_velocity(frame)
@@ -63,19 +76,22 @@ def process_frame(frame: List[FrameInput]) -> TrajectoryAnalysisResult:
 
     # After getting bounce point, now we will predict the trajectory up till the stump positions
     bounce_pos: int | None = detect_bounce(ball_positions)
-
+    if bounce_pos == None:
+        # No bounce point found, probably a full toss
+        pass
     # TODO : predict trajectory from bounce point up till stump positions or player (idk)
     predicted_trajectory = compute_trajectory(position, velocity, spin)
-    stump_tracker = StumpTracker(jitter_threshold=3)
 
-    stumps_hit = any(p.position.x < 0.5 for p in predicted_trajectory)
-
+    stump_pos: List[List[StumpDetection]] = get_stump_positions(frames=frame)
+    stump_tracker.update(stump_pos)
+    
+    
 
     # the output model needs to be updated
     return TrajectoryAnalysisResult(
-        frame_id=frame.frame_id,
+        frame_id=1212,  # Just some dummp value
         match_id="match123",
-        processing_timestamp=datetime.utcnow(),
+        processing_timestamp=datetime.now(timezone.utc),
         predicted_trajectory=predicted_trajectory,
         impact_location=predicted_trajectory[-1].position,
         bounce_point=predicted_trajectory[len(predicted_trajectory) // 2].position,

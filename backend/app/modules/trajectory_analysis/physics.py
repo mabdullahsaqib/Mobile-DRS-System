@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from modules.trajectory_analysis.models.Input_model import Position3D, Velocity3D, Spin
 
 # Constants
@@ -26,7 +26,7 @@ def compute_trajectory(
     stop_x: float = STUMP_X
 ) -> List[Dict]:
     """
-    Computes the trajectory of a spinning cricket ball starting near batter’s pads
+    Computes the trajectory of a spinning cricket ball starting near batter's pads
     and ending at the stump plane (x = stop_x). Models:
     - Gravity
     - Air drag
@@ -88,11 +88,35 @@ def compute_trajectory(
 
     return trajectory
 
-# example usage
 
-# traj = compute_trajectory(
-#     current_pos=Position3D(x=1.0, y=0.0, z=0.7),  # 70cm above ground
-#     velocity=Velocity3D(x=-30.0, y=0.0, z=1.0),   # toward stumps
-#     spin=Spin(rate=20.0, axis=Velocity3D(x=0.0, y=0.0, z=1.0)),  # top spin
-#     edge_detected=False
-# )
+def calculate_velocity(p1, p2, t1, t2):
+    """Calculate 2D velocity vector between two points."""
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    dt = t2 - t1
+    if dt == 0:
+        return (0, 0)
+    return (dx / dt, dy / dt)
+
+
+
+
+
+
+
+def detect_bounce(
+    ball_positions: List[List[float]]
+) -> Optional[int]:
+    """
+    Detects the frame index where the ball bounces.
+    Simple method: Bounce typically seen when y-coordinate increases after a decrease.
+    (In most camera setups, vertical coordinate 'y' grows downward.)
+    """
+    for i in range(1, len(ball_positions) - 1):
+        prev_y = ball_positions[i - 1][1]
+        curr_y = ball_positions[i][1]
+        next_y = ball_positions[i + 1][1]
+
+        if curr_y > prev_y and next_y < curr_y:
+            return i
+    return None
