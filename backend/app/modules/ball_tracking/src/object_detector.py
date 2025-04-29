@@ -41,8 +41,8 @@ class ObjectDetector:
         self.confidence_threshold = config.get("confidence_threshold", 0.5)
         
         # Initialize detection models based on method
-        if self.detection_method in ["deep_learning", "hybrid"]:
-            self._init_deep_learning_models()
+        #if self.detection_method in ["deep_learning", "hybrid"]:
+        #    self._init_deep_learning_models()
         
         # Initialize traditional CV parameters
         self._init_traditional_cv_params()
@@ -194,3 +194,6 @@ class ObjectDetector:
                 })
 
         return stumps
+    
+    def _init_deep_learning_models(self):
+        return
