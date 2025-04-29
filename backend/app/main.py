@@ -1,0 +1,1 @@
+# fast api endpoint , and also the entry point of the application that calls other functions
