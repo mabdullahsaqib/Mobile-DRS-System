@@ -3,7 +3,6 @@ import scipy.io.wavfile as wav
 
 def load_audio(filename):
     sample_rate, data = wav.read(filename)
-    # If stereo, take only one channel
     if len(data.shape) == 2:
         data = data[:, 0]
     return sample_rate, data
@@ -29,16 +28,9 @@ def make_decision(spikes):
         return "Not Out"
 
 def drs_system_pipeline(audio_filename):
-    # Step 1: Load audio
+    
     sample_rate, data = load_audio(audio_filename)
-
-    # Step 2: Frame the audio
     frames = frame_audio(data, sample_rate, frame_duration_ms=10)
-
-    # Step 3: Detect spikes
-    spikes = detect_spikes(frames, threshold_factor=2.5)
-
-    # Step 4: Make decision
+    spikes = detect_spikes(frames, threshold_factor=2.5)#keeping this as threshold
     decision = make_decision(spikes)
-
     return decision
