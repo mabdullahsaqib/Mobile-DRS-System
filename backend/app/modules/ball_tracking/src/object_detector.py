@@ -1,3 +1,5 @@
+
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -90,16 +92,9 @@ class ObjectDetector:
 
         return results
     
-    
     def _detect_with_traditional_cv(self, frame: np.ndarray, results: Dict[str, List[Dict[str, Any]]]):
-        """
-        Detect objects using traditional computer vision techniques.
+
         
-        Args:
-            frame: Input frame
-            results: Dictionary to store detection results
-        """
-        # Detect ball using color and shape
         ball_detections = self._detect_ball_traditional(frame)
         results["ball"] = ball_detections
         
@@ -107,12 +102,76 @@ class ObjectDetector:
         stump_detections = self._detect_stumps_traditional(frame)
        
         results["stumps"] = stump_detections
+        batsman_detections = self._detect_batsman_traditional(frame)
+        
+        frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+        rects, weights = self.hog.detectMultiScale(
+            frame_resized,
+            winStride=(8, 8),
+            padding=(8, 8),
+            scale=1.05
+        )
 
-      
-        # For batsman and bat, traditional methods are less reliable
-        # In a real implementation, these would use more sophisticated techniques
-        # For now, we'll use traditional method
-    
+        detections = []
+        frame_width = frame.shape[1]
+
+        for (x, y, w, h), weight in zip(rects, weights):
+            if weight >= self.confidence_threshold:
+               
+                x, y, w, h = int(x * 2), int(y * 2), int(w * 2), int(h * 2)
+                center_x = x + w // 2
+
+            
+                if 0.2 * frame_width < center_x < 0.8 * frame_width:
+                   
+                    shrink_factor = 0.7
+                    new_w = int(w * shrink_factor)
+                    new_h = int(h * shrink_factor)
+                    new_x = x + (w - new_w) // 2
+                    new_y = y + (h - new_h) // 2
+
+                    detections.append({
+                        "bbox": (new_x, new_y, new_w, new_h),
+                        "confidence": float(weight)
+                    })
+
+        results["batsman"] = detections
+         
+
+    def _detect_batsman_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
+     
+        frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+
+   
+        rects, weights = self.hog.detectMultiScale(
+            frame_resized,
+            winStride=(8, 8),
+            padding=(8, 8),
+            scale=1.05
+        )
+
+        detections = []
+        frame_width = frame.shape[1]
+
+        for (x, y, w, h), weight in zip(rects, weights):
+            if weight >= self.confidence_threshold:
+             
+                x, y, w, h = int(x * 2), int(y * 2), int(w * 2), int(h * 2)
+                center_x = x + w // 2
+                if 0.2 * frame_width < center_x < 0.8 * frame_width:
+                    shrink = 0.7
+                    new_w = int(w * shrink)
+                    new_h = int(h * shrink)
+                    new_x = x + (w - new_w) // 2
+                    new_y = y + (h - new_h) // 2
+
+                    detections.append({
+                        "bbox": [new_x, new_y, new_w, new_h],
+                        "confidence": float(weight)
+                    })
+
+        return detections    
+
     def _detect_ball_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
         """
         Detect cricket ball using traditional CV techniques.

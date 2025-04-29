@@ -1,3 +1,4 @@
+
 import cv2
 import json
 import argparse
@@ -38,13 +39,14 @@ def main():
 
         processed_frame = processor.preprocess_frame(frame)
         detections = detector.detect(processed_frame)
-
+        batsman_detections = detections.get('batsman', []) 
         output = {
             "frame_id": frame_id,
             "timestamp": timestamp,
             "detections": {
                 "ball": detections.get("ball", []),
-                "stumps": detections.get("stumps", [])
+                "stumps": detections.get("stumps", []),
+                "batsman": detections.get("batsman", []),
             }
         }
         all_outputs.append(output)
@@ -59,6 +61,11 @@ def main():
                 x, y, w, h = obj['bbox']
                 cv2.rectangle(processed_frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
                 cv2.putText(processed_frame, 'Stumps', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+            for obj in output['detections']['batsman']: 
+                x, y, w, h = obj['bbox']
+                cv2.rectangle(processed_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                cv2.putText(processed_frame, 'Batsman', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
 
             cv2.imshow("Detections", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
