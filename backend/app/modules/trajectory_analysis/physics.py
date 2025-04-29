@@ -99,29 +99,9 @@ def calculate_velocity(p1, p2, t1, t2):
     return (dx / dt, dy / dt)
 
 
-def process_ball_data(frames):
-    ball_positions = []
-    timestamps = []
-
-    for frame in frames:
-        detections = frame.get("detections", {})
-        ball_detections = detections.get("ball", [])
-
-        if ball_detections:
-            # Assuming we're interested in the first detected ball
-            ball = ball_detections[0]
-            center = ball.get("center")
-            timestamp = frame.get("timestamp")
-
-            if center and timestamp is not None:
-                ball_positions.append(center)
-                timestamps.append(timestamp)
-
-    return ball_positions, timestamps
 
 
-def get_stump_positions():
-    return;
+
 
 
 def detect_bounce(
