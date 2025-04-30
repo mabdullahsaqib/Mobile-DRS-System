@@ -14,8 +14,31 @@ class VideoPlayerScreen extends StatefulWidget {
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
+class TimeDuration {
+  final Duration startTime;
+  final Duration endTime;
+
+  TimeDuration({
+    required this.startTime,
+    required this.endTime,
+  });
+
+  factory TimeDuration.fromDouble(double start, double end) {
+    return TimeDuration(
+      startTime: Duration(milliseconds: (start * 1000.round()).toInt()),
+      endTime: Duration(milliseconds: (end * 1000.round()).toInt()),
+    );
+  }
+}
+
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late VideoPlayerController _controller;
+
+  List<TimeDuration> timeDurations = [
+    TimeDuration.fromDouble(0.2, 0.8),
+    TimeDuration.fromDouble(1.3, 2.35),
+    TimeDuration.fromDouble(5.4, 6.45)
+  ];
 
   String formatVideoDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -80,13 +103,70 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               )),
                         ],
                       ),
-                      SizedBox(
-                        height: 15,
-                        child: VideoProgressIndicator(
-                          _controller,
-                          allowScrubbing: true,
+                      Stack(children: [
+                        IgnorePointer(
+                          child: SizedBox(
+                            height: 15,
+                            child: VideoProgressIndicator(
+                              colors: const VideoProgressColors(
+                                  playedColor: Colors.orange),
+                              _controller,
+                              allowScrubbing: true,
+                            ),
+                          ),
                         ),
-                      ),
+                        // Custom duration highlight boxes
+                        Positioned.fill(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final totalDuration =
+                                  _controller.value.duration.inMilliseconds;
+
+                              return Stack(
+                                children: timeDurations.map((duration) {
+                                  final startFraction =
+                                      duration.startTime.inMilliseconds /
+                                          totalDuration;
+                                  final endFraction =
+                                      duration.endTime.inMilliseconds /
+                                          totalDuration;
+                                  final left =
+                                      constraints.maxWidth * startFraction;
+                                  final width = constraints.maxWidth *
+                                      (endFraction - startFraction);
+                                  final height =
+                                      50.0; // Set the desired height here
+
+                                  return Positioned(
+                                    left: left,
+                                    top: 5, // Center the block vertically
+                                    bottom: 0,
+                                    width: width,
+                                    child: Container(
+                                      color: Colors.yellow,
+                                      height:
+                                          height, // Specify the height of the block here
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            },
+                          ),
+                        ),
+
+                        Opacity(
+                          opacity: 0.1,
+                          child: SizedBox(
+                            height: 15,
+                            child: VideoProgressIndicator(
+                              colors: const VideoProgressColors(
+                                  playedColor: Colors.black),
+                              _controller,
+                              allowScrubbing: true,
+                            ),
+                          ),
+                        ),
+                      ]),
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
