@@ -12,4 +12,4 @@ def edge_detection_status():
 def edge_detection_handler(data: EdgeDetectionInput):
     result = detect_edge(data)
     decision = drs_system_pipeline(data)
-    return {"edge_detected": result}
+    return {"edge_detected": result, "decision":decision}
