@@ -3,7 +3,7 @@ from modules.edge_detection.controllers.frame_controller import detect_edge
 from modules.edge_detection.models.frame_model import EdgeDetectionInput
 from modules.edge_detection.controllers.audio_detection import drs_system_pipeline
 router = APIRouter()
-
+#hehe
 @router.get("/")
 def edge_detection_status():
     return {"message": "Edge Detection module is active"}
