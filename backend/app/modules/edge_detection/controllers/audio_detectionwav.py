@@ -5,6 +5,10 @@ import noisereduce as nr
 from pydub import AudioSegment
 from pydantic import BaseModel
 
+
+class AudioData(BaseModel):
+    data: str  
+
 def decodebase64_convert_to_wav(audio: AudioData, output_path: str):
     
     audio_bytes = base64.b64decode(audio.data)
