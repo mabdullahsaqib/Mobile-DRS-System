@@ -11,5 +11,5 @@ def edge_detection_status():
 @router.post("/detect-edge")
 def edge_detection_handler(data: EdgeDetectionInput):
     result = detect_edge(data)
-    audio_res=drs_system_pipeline("")#will insert filename here
+    decision = drs_system_pipeline(data)
     return {"edge_detected": result}
