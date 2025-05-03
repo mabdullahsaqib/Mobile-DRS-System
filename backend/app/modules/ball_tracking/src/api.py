@@ -26,7 +26,12 @@ from ball_tracker import BallTracker
 from stump_detector import StumpDetector
 from data_models import TrackingResult
 from utils import visualize_results, setup_logging
+from pydantic import BaseModel, Field
+from typing import Tuple
+from models.input_model import FramePayload
 
+
+  
 app = FastAPI(
     title="Cricket Ball Tracking API",
     description="API for tracking cricket ball and related objects in video frames",
@@ -41,7 +46,7 @@ config = {
         "reduce_noise": True
     },
     "object_detector": {
-        "detection_method": "hybrid",
+        "detection_method": "traditional",
         "confidence_threshold": 0.5
     },
     "ball_tracker": {
@@ -130,7 +135,33 @@ async def process_frame(request: Request):
     except Exception as e:
         logging.error(f"Error processing frame: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/detect_frame")
+async def detect_frame(payload: FramePayload):
+   #decodes an incoming frame payload and returning the raw json detetcions in it for now.
+    try:
+        
+        frame = processor.decode_frame({
+            "frame_id": payload.frame_id,
+            "timestamp": payload.timestamp,
+            "data": payload.image_data
+        })
 
+        
+        
+        detections = detector.detect(frame)
+
+        # 3) Return structured response
+        return {
+            "frame_id":  payload.frame_id,
+            "timestamp": payload.timestamp,
+            "detections": detections
+        }
+
+    except Exception as e:
+        logging.error(f"detect_frame error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.post("/visualize_frame")
 async def visualize_frame(request: Request):
     """
