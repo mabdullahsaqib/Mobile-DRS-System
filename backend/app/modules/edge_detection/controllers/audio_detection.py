@@ -52,9 +52,7 @@ def drs_system_pipeline(data: EdgeDetectionInput) -> dict:
     denoise_audio(raw_wav_path, cleaned_wav_path)
 
     # Step 3: Load audio (from cleaned file)
-    sample_rate, data = wav.read(cleaned_wav_path)
-    if len(data.shape) == 2:
-        data = data[:, 0]
+    sample_rate, data = load_audio(cleaned_wav_path)
 
     # Step 4: Frame the audio
     frames = frame_audio(data, sample_rate, frame_duration_ms=10)
