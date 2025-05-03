@@ -55,4 +55,4 @@ class EdgeDetectionInput(BaseModel):
     metadata: Metadata
     ball_data: BallData
     bat_data: BatData
-    audio_data: Optional[AudioData]
+    audio_data: AudioData

@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 from modules.edge_detection.controllers.frame_controller import detect_edge
 from modules.edge_detection.models.frame_model import EdgeDetectionInput
-
+from modules.edge_detection.controllers.audio_detection import drs_system_pipeline
 router = APIRouter()
-
+#hehe
 @router.get("/")
 def edge_detection_status():
     return {"message": "Edge Detection module is active"}
@@ -11,4 +11,5 @@ def edge_detection_status():
 @router.post("/detect-edge")
 def edge_detection_handler(data: EdgeDetectionInput):
     result = detect_edge(data)
-    return {"edge_detected": result}
+    decision = drs_system_pipeline(data)
+    return {"edge_detected": result, "decision":decision}
