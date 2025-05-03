@@ -1,4 +1,3 @@
-
 import numpy as np
 import scipy.io.wavfile as wav
 from modules.edge_detection.models.frame_model import EdgeDetectionInput
