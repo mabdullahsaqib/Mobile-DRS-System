@@ -80,7 +80,7 @@ def process_frame(frame: List[FrameInput]) -> TrajectoryAnalysisResult:
         # No bounce point found, probably a full toss
         pass
     # TODO : predict trajectory from bounce point up till stump positions or player (idk)
-    predicted_trajectory = compute_trajectory(position, velocity, spin)
+    predicted_trajectory = compute_trajectory(position, velocity, spin) # type: ignore
 
     stump_pos: List[List[StumpDetection]] = get_stump_positions(frames=frame)
     stump_tracker.update(stump_pos)
@@ -101,7 +101,7 @@ def process_frame(frame: List[FrameInput]) -> TrajectoryAnalysisResult:
             drag_coefficient=0.45,
             bounce_coefficient=0.6,
         ),
-        stumps_hit=stumps_hit,
+        stumps_hit=stumps_hit,# type: ignore
         decision_confidence=0.88,
         notes=["Trajectory and spin are estimated based on dummy logic."],
     )

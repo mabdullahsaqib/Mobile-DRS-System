@@ -1,131 +1,198 @@
 import json
 import os
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+import json
 import numpy as np
 
-# -----------------------------------------------------------------------------
-# Data container for each frame with ball data
-# -----------------------------------------------------------------------------
 @dataclass
-class Frame:
-    raw_index: int
+class Frame3D:
     frame_id: int
     timestamp: float
-    center: Tuple[float, float]  # (x, y)
-    radius: float                # pixel radius
-    z: float = 0.0               # estimated depth
+    x: float
+    y: float
+    z: float
 
-# -----------------------------------------------------------------------------
-# Load JSON & extract frames with ball detections
-# -----------------------------------------------------------------------------
-def load_ball_frames(filename: str, focal_length: float, ball_diameter: float) -> Tuple[list, List[Frame]]:
+@dataclass
+class Stump:
+    top_x: float
+    top_y: float
+    bottom_x: float
+    bottom_y: float
+    top_z: float
+    bottom_z: float
+
+def load_module2_data(json_file: str) -> Tuple[List[Frame3D], List[List[Stump]]]:
     base = os.path.dirname(__file__)
-    path = os.path.join(base, filename)
-    with open(path, 'r') as f:
-        raw = json.load(f)
+    path = os.path.join(base, json_file)
+    raw = json.load(open(path, 'r'))
 
-    frames: List[Frame] = []
-    for idx, obj in enumerate(raw):
-        for b in obj['detections']['ball']:
-            c = b.get('centre') or b.get('center')
-            if not c or len(c) < 2:
-                continue
-            x, y = c[0], c[1]
-            r = b.get('radius', 0.0)
-            if r == 0:
-                continue
-            z = (focal_length * ball_diameter) / (2 * r)
-            frames.append(Frame(
-                raw_index=idx,
-                frame_id=obj['frame_id'],
-                timestamp=obj['timestamp'],
-                center=(x, y),
-                radius=r,
-                z=z
-            ))
-    return raw, frames
+    frames: List[Frame3D] = []
+    stumps_all: List[List[Stump]] = []
 
-# -----------------------------------------------------------------------------
-# Find contact frame: max radius
-# -----------------------------------------------------------------------------
-def find_contact_index(frames: List[Frame]) -> int:
-    radii = [f.radius for f in frames]
-    return int(np.argmax(radii))
+    for obj in raw:
+        fid = obj["frame_id"]
+        ts  = float(obj["timestamp"])
+        ball_det = obj["detections"]["ball"]
+        if not ball_det:
+            continue
+        b = ball_det[0]
+        cx, cy, cz = b["center3d"]
+        frames.append(Frame3D(fid, ts, cx, cy, cz))
 
-# -----------------------------------------------------------------------------
-# Determine stump_x (mean top-x of stumps)
-# -----------------------------------------------------------------------------
-def get_stump_x(raw: list, idx: int) -> float:
-    stumps = raw[idx]['detections']['stumps']
-    if not stumps:
-        stumps = raw[0]['detections']['stumps']
-    xs = [s['top'][0] for s in stumps]
-    return float(sum(xs) / len(xs))
+        smods: List[Stump] = []
+        for s in obj["detections"]["stumps"]:
+            tx, ty, tz = s["top3d"]
+            bx, by, bz = s["bottom3d"]
+            smods.append(Stump(tx, ty, bx, by, tz, bz))
+        stumps_all.append(smods)
 
-# -----------------------------------------------------------------------------
-# Fit a parabola y = ax² + bx + c through (x_k, y_k)
-# -----------------------------------------------------------------------------
-def fit_parabola(x_vals: List[float], y_vals: List[float]) -> np.ndarray:
-    coeffs = np.polyfit(x_vals, y_vals, deg=2)
-    return coeffs
+    return frames, stumps_all
 
-# -----------------------------------------------------------------------------
-# Sample the fitted parabola at many x
-# -----------------------------------------------------------------------------
-def sample_trajectory(
-    coeffs: np.ndarray,
-    x_start: float,
-    x_end: float,
-    n_points: int = 50
-) -> List[Tuple[float, float]]:
-    xs = np.linspace(x_start, x_end, n_points)
-    ys = np.polyval(coeffs, xs)
-    return list(zip(xs.tolist(), ys.tolist()))
+def find_bounce_index(frames: List[Frame3D]) -> Optional[int]:
+    ys = [f.y for f in frames]
+    return int(np.argmin(ys)) if ys else None
 
-# -----------------------------------------------------------------------------
-# Main routine: glue everything together and print results
-# -----------------------------------------------------------------------------
-def main():
-    # Define camera parameters
-    focal_length = 800.0  # in pixels
-    ball_diameter = 0.22  # in meters (standard cricket ball diameter)
+def find_impact_index(frames: List[Frame3D], start: int = 0) -> Optional[int]:
+    for i in range(start+1, len(frames)):
+        if frames[i].z < frames[i-1].z:
+            return i
+    return None
 
-    raw, frames = load_ball_frames('module2_output.json', focal_length, ball_diameter)
-    if len(frames) < 2:
-        print("Not enough ball frames to fit trajectory.")
-        return
+def estimate_spin(frames: List[Frame3D], i_start: int, i_end: int) -> Tuple[np.ndarray, float]:
+    vs = []
+    for i in range(i_start+1, i_end+1):
+        dt = frames[i].timestamp - frames[i-1].timestamp or 1e-6
+        v = np.array([
+            (frames[i].x - frames[i-1].x)/dt,
+            (frames[i].y - frames[i-1].y)/dt,
+            (frames[i].z - frames[i-1].z)/dt
+        ])
+        vs.append(v)
+    if len(vs) < 2:
+        return np.array([0.0, 0.0, 1.0]), 0.0
+    axis = np.cross(vs[0], vs[-1])
+    norm = np.linalg.norm(axis)
+    axis = axis / (norm or 1.0)
+    dot = np.dot(vs[0], vs[-1])
+    ang = np.arccos(np.clip(dot / ((np.linalg.norm(vs[0]) * np.linalg.norm(vs[-1])) or 1.0), -1, 1))
+    rate = ang / ((frames[i_end].timestamp - frames[i_start].timestamp) or 1e-6)
+    return axis, rate
 
-    cidx = find_contact_index(frames)
-    contact = frames[cidx]
-    print(f"Contact at frame {contact.frame_id} (idx={cidx}), radius={contact.radius}")
+def simulate_with_spin(
+    pos: np.ndarray, vel: np.ndarray,
+    spin_axis: np.ndarray, spin_rate: float,
+    z_stump: float,
+    dt: float = 0.005
+) -> List[Tuple[float, float, float, float]]:
+    traj = []
+    t = 0.0
+    traj.append((t, pos[0], pos[1], pos[2]))
 
-    stump_x = get_stump_x(raw, contact.raw_index)
-    print(f"Stump plane at x = {stump_x:.1f}")
+    g_vec = np.array([0.0, -9.81, 0.0])
+    C_d = 0.005
+    S = 1e-4
+    while pos[2] > z_stump and pos[1] > -1.0:  # Corrected condition
+        Fg = g_vec
+        Fd = -C_d * np.linalg.norm(vel) * vel
+        Fm = S * np.cross(spin_rate * spin_axis, vel)
+        a = Fg + Fd + Fm
 
-    seq = frames[cidx:]
-    x_vals, y_vals = [], []
-    for f in seq:
-        x, y = f.center
-        x_vals.append(x)
-        y_vals.append(y)
-        if (x_vals[0] < stump_x and x >= stump_x) or (x_vals[0] > stump_x and x <= stump_x):
-            break
+        vel += a * dt
+        pos += vel * dt
+        t += dt
+        traj.append((t, pos[0], pos[1], pos[2]))
+    return traj
 
-    print(f"Collected {len(x_vals)} points for fit: X range [{x_vals[0]:.1f}, {x_vals[-1]:.1f}]")
+def check_hit(final_pos: np.ndarray, stumps: List[Stump]) -> bool:
+    xs = [s.top_x for s in stumps] + [s.bottom_x for s in stumps]
+    ys = [s.top_y for s in stumps] + [s.bottom_y for s in stumps]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    x_ok = min_x <= final_pos[0] <= max_x
+    y_ok = min_y <= final_pos[1] <= max_y
+    return x_ok and y_ok
 
-    coeffs = fit_parabola(x_vals, y_vals)
-    a, b, c = coeffs
-    print(f"Fitted parabola: y = {a:.3e} x² + {b:.3e} x + {c:.3e}")
+def process_full_trajectory(json_file: str) -> dict:
+    frames, stumps_all = load_module2_data(json_file)
+    if not frames:
+        return {"error": "No ball data"}
 
-    traj = sample_trajectory(coeffs, x_vals[0], stump_x, n_points=20)
-    print("\nPredicted 3D trajectory (x, y, z):")
-    for i, (x, y) in enumerate(traj):
-        if i < len(seq):
-            z = seq[i].z
-        else:
-            z = seq[-1].z
-        print(f"  x={x:.2f}\t y={y:.2f}\t z={z:.2f}")
+    # 1) Bounce detection
+    i_b = find_bounce_index(frames) or 0
+
+    # 2) Impact detection (first z-drop)
+    i_imp = find_impact_index(frames, i_b) or i_b
+
+    # 3) Spin estimation between bounce and impact
+    axis, rate = estimate_spin(frames, i_b, i_imp)
+
+    # 4) Initial position & velocity at impact
+    f0 = frames[i_imp]
+    f_prev = frames[max(i_imp-1, 0)]
+    dt0 = f0.timestamp - f_prev.timestamp or 1e-6
+    v0 = np.array([
+        (f0.x - f_prev.x) / dt0,
+        (f0.y - f_prev.y) / dt0,
+        (f0.z - f_prev.z) / dt0
+    ])
+    p0 = np.array([f0.x, f0.y, f0.z])
+
+    # 5) Stump plane depth (mean of stump tops)
+    stumps = stumps_all[i_imp]
+    z_stump = float(np.mean([s.top_z for s in stumps]))  # cast to Python float
+
+    # 6) Simulate the trajectory
+    traj = simulate_with_spin(p0, v0, axis, rate, z_stump)
+
+    # 7) Hit test on the final point
+    final_t, final_x, final_y, final_z = traj[-1]
+    hit = check_hit(np.array([final_x, final_y, final_z]), stumps)
+
+    # Return a structured result
+    return {
+        "bounce_index": i_b,
+        "impact_index": i_imp,
+        "spin_axis": axis.tolist(),
+        "spin_rate": rate,
+        "stump_depth": z_stump,
+        "hit": hit,
+        "trajectory": [
+            {"t": round(t, 3), "x": x, "y": y, "z": z}
+            for (t, x, y, z) in traj
+        ]
+    }
+import json
+import numpy as np
+
+def make_json_serializable(obj):
+    """
+    Recursively convert numpy types to native Python types.
+    """
+    if isinstance(obj, dict):
+        return {make_json_serializable(k): make_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [make_json_serializable(v) for v in obj]
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    else:
+        return obj
+
+result = process_full_trajectory("module2_output.json")
+serializable = make_json_serializable(result)
+
+with open("output.json", "w") as f:
+    json.dump(serializable, f, indent=2)
 
 if __name__ == "__main__":
-    main()
+    import pprint
+    # result = process_full_trajectory("module2_output.json")
+    import json
+    result = process_full_trajectory("module2_output.json")
+    pprint.pprint(result, width=120)
+    make_json_serializable(result)
+    
