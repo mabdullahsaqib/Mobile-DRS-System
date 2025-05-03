@@ -60,22 +60,26 @@ class FrameProcessor:
         Returns:
             Decoded frame as numpy array (BGR format)
         """
-        # If frame_data contains 'data' field with base64 encoding
+      
+        # 1) Base64 branch
         if 'data' in frame_data and isinstance(frame_data['data'], str):
-            # Decode base64 string to image
+            # frame_data['data'] is your Base64 string
             img_bytes = base64.b64decode(frame_data['data'])
-            nparr = np.frombuffer(img_bytes, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        # If frame_data already contains a numpy array
+            nparr     = np.frombuffer(img_bytes, np.uint8)
+            frame     = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        # 2) Or, if someone passed you a raw np.ndarray under 'frame'
         elif 'frame' in frame_data and isinstance(frame_data['frame'], np.ndarray):
             frame = frame_data['frame']
-        # If frame_data is the frame itself (for testing)
+
+        # 3) Or, if they passed the array itself
         elif isinstance(frame_data, np.ndarray):
             frame = frame_data
+
         else:
             raise ValueError("Unsupported frame data format")
-        
-        # Apply preprocessing
+
+        # 4) Finally, hand it off to your preprocessing (resize, denoise, etc.)
         return self.preprocess_frame(frame)
     
     def preprocess_frame(self, frame: np.ndarray) -> np.ndarray:
