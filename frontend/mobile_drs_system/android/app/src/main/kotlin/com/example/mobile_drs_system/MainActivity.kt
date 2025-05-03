@@ -12,6 +12,7 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 import android.os.Build
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.video_frames_extractor"
@@ -41,7 +42,28 @@ class MainActivity : FlutterActivity() {
                 } else {
                     result.error("INVALID_ARGUMENTS", "Video path or output directory is empty", null)
                 }
-            }else {
+            }
+            else if(call.method == "extractAudio") {
+                val videoPath = call.argument<String>("videoPath") ?: ""
+                val outputDir = call.argument<String>("outputDir") ?: ""
+                if (videoPath.isNotEmpty() && outputDir.isNotEmpty()) {
+                    Thread{
+                        try{
+
+                            val audioPaths = extractAudio(videoPath, outputDir)
+                            result.success(audioPaths)
+                        }
+                        catch (e: Exception) {
+                            activity.runOnUiThread {
+                                result.error("FRAME_EXTRACTION_FAILED", e.message, null)
+                            }
+                        }
+                    }.start()
+                } else {
+                    result.error("INVALID_ARGUMENTS", "Video path or output directory is empty", null)
+                }
+            }
+            else {
                 result.notImplemented()
             }
         }
@@ -77,6 +99,69 @@ class MainActivity : FlutterActivity() {
         return filePaths
     }
 
+    private fun extractAudio(videoPath: String, outputDir: String): List<String> {
+        val extractor = MediaExtractor()
+        extractor.setDataSource(videoPath)
+        
+        // Find audio track
+        val audioTrackIndex = selectAudioTrack(extractor)
+        if (audioTrackIndex < 0) {
+            extractor.release()
+            return emptyList() // No audio track found
+        }
+        
+        extractor.selectTrack(audioTrackIndex)
+        val format = extractor.getTrackFormat(audioTrackIndex)
+        
+        val outputDirectory = File(outputDir)
+        if (!outputDirectory.exists()) outputDirectory.mkdirs()
+        
+        val audioPaths = mutableListOf<String>()
+        val buffer = ByteBuffer.allocate(1024 * 1024) // 1MB buffer
+        
+        // Get video metadata to determine frame times
+        val retriever = MediaMetadataRetriever()
+        retriever.setDataSource(videoPath)
+        val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0
+        val frameRate = getFrameRate(videoPath)
+        val frameCount = ((durationMs * frameRate) / 1000).toInt()
+        val frameIntervalUs = 1_000_000L / frameRate
+        
+        for (i in 0 until frameCount) {
+            val timeUs = i * frameIntervalUs
+            extractor.seekTo(timeUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+            
+            val sampleSize = extractor.readSampleData(buffer, 0)
+            if (sampleSize > 0) {
+                val audioFile = File(outputDirectory, "audio_$i.raw")
+                FileOutputStream(audioFile).use { stream ->
+                    val sample = ByteArray(sampleSize)
+                    buffer.rewind()
+                    buffer.get(sample)
+                    stream.write(sample)
+                }
+                audioPaths.add(audioFile.absolutePath)
+                extractor.advance()
+            } else {
+                audioPaths.add("") // Empty string for frames with no audio
+            }
+        }
+        
+        extractor.release()
+        retriever.release()
+        return audioPaths
+    }
+
+    private fun selectAudioTrack(extractor: MediaExtractor): Int {
+        for (i in 0 until extractor.trackCount) {
+            val format = extractor.getTrackFormat(i)
+            if (format.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                return i
+            }
+        }
+        return -1
+    }
+    
     private fun getFrameRate(videoPath: String): Int {
         val extractor = MediaExtractor()
         extractor.setDataSource(videoPath)
