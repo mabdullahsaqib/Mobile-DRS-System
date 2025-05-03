@@ -3,7 +3,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_media_store/flutter_media_store.dart';
 import 'package:mobile_drs_system/routes/app_routes.dart';
-import 'package:mobile_drs_system/screens/kalan_filter.dart';
+import 'package:mobile_drs_system/utils/kalan_filter.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
@@ -190,8 +190,8 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
     if (mounted) {
       Navigator.pushNamed(
         context,
-        AppRoutes.videoPlayer,
-        arguments: VideoPlayerScreenArguments(
+        AppRoutes.videoFormat,
+        arguments: VideoFormatScreenArguments(
           mainVideoPath: _videoPath,
           cameraPositions: _positions,
           cameraRotations: _rotations,
