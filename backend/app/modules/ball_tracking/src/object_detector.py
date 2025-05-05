@@ -41,6 +41,10 @@ class ObjectDetector:
         self.config = config
         self.detection_method = config.get("detection_method", "hybrid")
         self.confidence_threshold = config.get("confidence_threshold", 0.5)
+        self.focal_length=config["focal_length_pixels"]
+        self.real_ball_diameter=0.073 #7.3 cm in meters
+        self.real_stump_height=0.71 #71cm in meters
+        self.real_batsman_height=1.7 #avg height in meters
         
         # Initialize detection models based on method
         #if self.detection_method in ["deep_learning", "hybrid"]:
@@ -53,10 +57,18 @@ class ObjectDetector:
        
     def _init_traditional_cv_params(self):
         """Initialize parameters for traditional computer vision approaches."""
-        # tuned for yellow ball
-        self.ball_color_lower = np.array([30,150,150], dtype=np.uint8)
-        self.ball_color_upper = np.array([40,255,255], dtype=np.uint8)
-        self.min_ball_radius   = 5
+            # Red color ranges (0-10 and 170-180 in HSV)
+        self.red_lower1 = np.array([0, 150, 150], dtype=np.uint8)
+        self.red_upper1 = np.array([10, 255, 255], dtype=np.uint8)
+        self.red_lower2 = np.array([170, 150, 150], dtype=np.uint8)
+        self.red_upper2 = np.array([180, 255, 255], dtype=np.uint8)
+        
+        # White color range
+        self.white_lower = np.array([0, 0, 200], dtype=np.uint8)
+        self.white_upper = np.array([180, 30, 255], dtype=np.uint8)
+        self.min_ball_radius = 5
+        self.real_ball_diameter = 0.073 
+
         
         # Stump detection parameters
         self.stump_color_lower = np.array([0, 0, 200])  # HSV lower bound for white/cream stumps
@@ -164,48 +176,129 @@ class ObjectDetector:
                     new_h = int(h * shrink)
                     new_x = x + (w - new_w) // 2
                     new_y = y + (h - new_h) // 2
-
+                    z=(self.focal_length * self.real_batsman_height)/new_h
                     detections.append({
                         "bbox": [new_x, new_y, new_w, new_h],
-                        "confidence": float(weight)
+                        "confidence": float(weight),
+                        "z":round(z,2)
                     })
 
         return detections    
 
+    # def _detect_ball_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
+    #     """
+    #     Detect cricket ball using traditional CV techniques.
+        
+    #     Args:
+    #         frame: Input frame
+            
+    #     Returns:
+    #         List of ball detection results
+    #     """
+    #     hsv  = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    #     mask = cv2.inRange(hsv,
+    #                     self.ball_color_lower,
+    #                     self.ball_color_upper)
+    #     mask = cv2.erode( mask, None, iterations=2)
+    #     mask = cv2.dilate(mask, None, iterations=2)
+
+    #     contours, _ = cv2.findContours(mask,
+    #                                 cv2.RETR_EXTERNAL,
+    #                                 cv2.CHAIN_APPROX_SIMPLE)
+    #     balls = []
+    #     if contours:
+    #         c = max(contours, key=cv2.contourArea)
+    #         (x,y), radius = cv2.minEnclosingCircle(c)
+    #         if radius > self.min_ball_radius:
+    #             diameter_pixels=2*radius
+    #             z=(self.focal_length * self.real_ball_diameter)/diameter_pixels
+
+    #             balls.append({
+    #             "bbox":       (int(x-radius), int(y-radius),
+    #                             int(2*radius),  int(2*radius)),
+    #             "confidence": 1.0,
+    #             "center":     (int(x), int(y)),
+    #             "radius":     int(radius),
+    #             "z": round(z,2)
+    #             })
+            
+    #     return balls
+
     def _detect_ball_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
         """
-        Detect cricket ball using traditional CV techniques.
+        Detect red/white cricket balls using traditional CV techniques.
         
         Args:
             frame: Input frame
             
         Returns:
-            List of ball detection results
+            List of ball detection results with 3D coordinates
         """
-        hsv  = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv,
-                        self.ball_color_lower,
-                        self.ball_color_upper)
-        mask = cv2.erode( mask, None, iterations=2)
-        mask = cv2.dilate(mask, None, iterations=2)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        
+        # Create masks for both red ranges and white
+        mask_red1 = cv2.inRange(hsv, self.red_lower1, self.red_upper1)
+        mask_red2 = cv2.inRange(hsv, self.red_lower2, self.red_upper2)
+        mask_white = cv2.inRange(hsv, self.white_lower, self.white_upper)
+        
+        # Combine masks using bitwise OR
+        combined_mask = cv2.bitwise_or(mask_red1, mask_red2)
+        combined_mask = cv2.bitwise_or(combined_mask, mask_white)
+        
+        # Noise removal
+        combined_mask = cv2.erode(combined_mask, None, iterations=2)
+        combined_mask = cv2.dilate(combined_mask, None, iterations=2)
 
-        contours, _ = cv2.findContours(mask,
+        contours, _ = cv2.findContours(combined_mask,
                                     cv2.RETR_EXTERNAL,
                                     cv2.CHAIN_APPROX_SIMPLE)
         balls = []
+        
         if contours:
-            c = max(contours, key=cv2.contourArea)
-            (x,y), radius = cv2.minEnclosingCircle(c)
-            if radius > self.min_ball_radius:
-                balls.append({
-                "bbox":       (int(x-radius), int(y-radius),
-                                int(2*radius),  int(2*radius)),
-                "confidence": 1.0,
-                "center":     (int(x), int(y)),
-                "radius":     int(radius)
-                })
+            # Filter contours by size and shape
+            valid_contours = []
+            for c in contours:
+                ((x, y), radius) = cv2.minEnclosingCircle(c)
+                area = cv2.contourArea(c)
+                
+                # Calculate circularity (1 = perfect circle)
+                perimeter = cv2.arcLength(c, True)
+                if perimeter > 0:
+                    circularity = 4 * np.pi * area / (perimeter ** 2)
+                else:
+                    continue
+                    
+                if (radius > self.min_ball_radius and 
+                    circularity > 0.7 and 
+                    area > 3 * np.pi * (self.min_ball_radius ** 2)):
+                    valid_contours.append(c)
+            
+            if valid_contours:
+                # Select most central contour
+                frame_center = (frame.shape[1]//2, frame.shape[0]//2)
+                c = min(valid_contours,
+                        key=lambda cnt: np.linalg.norm(
+                            np.array(cv2.minEnclosingCircle(cnt)[0]) - 
+                            np.array(frame_center)
+                        ))
+                
+                (x, y), radius = cv2.minEnclosingCircle(c)
+                if radius > self.min_ball_radius:
+                    # Calculate depth
+                    diameter_pixels = 2 * radius
+                    z = (self.focal_length * self.real_ball_diameter) / diameter_pixels
+                    
+                    balls.append({
+                        "bbox": (int(x-radius), int(y-radius), 
+                                int(2*radius), int(2*radius)),
+                        "confidence": 1.0,
+                        "center": (int(x), int(y)),
+                        "radius": int(radius),
+                        "z": round(z, 2)
+                    })
+        
         return balls
-    
+        
     def _detect_stumps_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
         """
         Detect stumps using traditional CV techniques.
@@ -245,11 +338,13 @@ class ObjectDetector:
 
             # only keep nice tall thin pieces
             if h > 75 and aspect > 3.0: 
+                z=(self.focal_length * self.real_stump_height)/h
                 stumps.append({
                     "bbox":       (x, y, w, h),
                     "confidence": 1.0,
                     "top":        (x + w//2, y),
-                    "bottom":     (x + w//2, y + h)
+                    "bottom":     (x + w//2, y + h),
+                    "z":           round(z,2)
                 })
 
         return stumps

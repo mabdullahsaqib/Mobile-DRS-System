@@ -1,13 +1,31 @@
 {
   "object_detector": {
     "detection_method": "traditional",
-    "confidence_threshold": 0.5
- 
-},
-    "frame_processor": {
-        "target_size": null,
-        "enhance_contrast": true,
-        "reduce_noise": true
+    "confidence_threshold": 0.5,
+    "focal_length_pixels": 1500
+  },
+  "frame_processor": {
+    "target_size": null,
+    "enhance_contrast": true,
+    "reduce_noise": true
+  },
+  "ball_tracker": {
+    "min_ball_radius": 5,
+    "color_thresholds": {
+      "red": {
+        "lower1": [0, 150, 150],
+        "upper1": [10, 255, 255],
+        "lower2": [170, 150, 150],
+        "upper2": [180, 255, 255]
+      },
+      "white": {
+        "lower": [0, 0, 200],
+        "upper": [180, 30, 255]
+      }
+    },
+    "tracking": {
+      "max_lost_frames": 10,
+      "motion_smoothing": 0.7
     }
   }
-  
+}

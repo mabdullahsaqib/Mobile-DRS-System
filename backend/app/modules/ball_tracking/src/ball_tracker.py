@@ -71,6 +71,19 @@ class BallTracker:
         self.last_acceleration = None
         self.tracking_lost_frames = 0
         self.max_lost_frames = config.get("max_lost_frames", 10)
+
+         # Red color ranges (0-10 and 170-180 in HSV)
+        self.red_lower1 = np.array([0, 150, 150], dtype=np.uint8)
+        self.red_upper1 = np.array([10, 255, 255], dtype=np.uint8)
+        self.red_lower2 = np.array([170, 150, 150], dtype=np.uint8)
+        self.red_upper2 = np.array([180, 255, 255], dtype=np.uint8)
+        
+        # White color range
+        self.white_lower = np.array([0, 0, 200], dtype=np.uint8)
+        self.white_upper = np.array([180, 30, 255], dtype=np.uint8)
+        
+        # Add minimum radius parameter
+        self.min_radius = config.get("min_ball_radius", 5)
     
     def _init_kalman_filter(self):
         """Initialize Kalman filter for ball tracking."""
@@ -117,23 +130,50 @@ class BallTracker:
         Returns: tuple of (center,radius) or NONE(not detected)
         """
 
-        hsv=cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
-        #ball mask
-        mask=cv2.inRange(hsv,self.color_lower,self.color_upper)
-        #noise removal
-        mask=cv2.erode(mask,None,iterations=2)
-        mask=cv2.dilate(mask,None,iterations=2)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    
+        # Create masks for both red ranges and white
+        mask_red1 = cv2.inRange(hsv, self.red_lower1, self.red_upper1)
+        mask_red2 = cv2.inRange(hsv, self.red_lower2, self.red_upper2)
+        mask_white = cv2.inRange(hsv, self.white_lower, self.white_upper)
+        
+        # Combine masks
+        mask = cv2.bitwise_or(mask_red1, mask_red2)
+        mask = cv2.bitwise_or(mask, mask_white)
+        
+        # Noise removal
+        mask = cv2.erode(mask, None, iterations=2)
+        mask = cv2.dilate(mask, None, iterations=2)
 
-        contours=cv2.findContours(mask.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-        contours=contours[0] if len(contours) == 2 else contours[1]
+        contours = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = contours[0] if len(contours) == 2 else contours[1]
 
-        #if at least 1 contour is found
-        if len(contours) >0:
-            c=max(contours,key=cv2.contourArea) # max contour finder
-            ((x,y),radius) = cv2.minEnclosingCircle(c)
-
-            if radius>self.min_radius:
-                return ((int(x),int(y)),int(radius))
+        if len(contours) > 0:
+            # Filter contours by area and circularity
+            valid_contours = []
+            for c in contours:
+                ((x, y), radius) = cv2.minEnclosingCircle(c)
+                area = cv2.contourArea(c)
+                
+                # Calculate circularity
+                perimeter = cv2.arcLength(c, True)
+                if perimeter == 0:
+                    continue
+                circularity = 4 * np.pi * area / (perimeter ** 2)
+                
+                if (radius > self.min_radius and 
+                    circularity > 0.7 and 
+                    area > 3 * np.pi * (self.min_radius ** 2)):
+                    valid_contours.append(c)
+            
+            if valid_contours:
+                # Select the most central contour
+                height, width = frame.shape[:2]
+                c = min(valid_contours, 
+                    key=lambda cnt: abs(cv2.minEnclosingCircle(cnt)[0][0] - width/2))
+                
+                ((x, y), radius) = cv2.minEnclosingCircle(c)
+                return ((int(x), int(y)), int(radius))
         
         return None
 
