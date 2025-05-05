@@ -1,48 +1,47 @@
-from .models import FrameDetection
-from .overlay import process_frame
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
-import numpy as np
+from .models import FrameDetection
+from .overlay import process_frame, process_frame_with_decision
 from .utils import combine_frames_to_video
 
 router = APIRouter()
 
-# Define bounding box structure
-class DetectionBox(BaseModel):
-    bbox: List[int]
-    confidence: float
-    top: List[int]
-    bottom: List[int]
+# Input model for decision info
+class DecisionInput(BaseModel):
+    isOut: bool
 
-# Structure for detections in each frame
-class Detections(BaseModel):
-    ball: List[DetectionBox]
-    stumps: List[DetectionBox]
-
-# Structure for a single frame with detections
-class FrameDetection(BaseModel):
-    frame_id: int
-    timestamp: float
-    detections: Detections
+# Combined input model for both modules
+class StreamAnalysisInput(BaseModel):
+    frames: List[FrameDetection]
+    decision: DecisionInput
 
 # Response model
 class StreamAnalysisOutput(BaseModel):
-    message: str  # Just a placeholder response for now
+    message: str
 
 @router.post("/analyze_stream", response_model=StreamAnalysisOutput)
-async def analyze_stream(frames: List[FrameDetection]):
+async def analyze_stream(input_data: StreamAnalysisInput):
     try:
-        processed_frames = []  # To store processed frames
+        processed_frames = []
 
-        for frame in frames:
-            # Process each frame (perform overlay or detection)
+        # First process all frames normally
+        for frame in input_data.frames:
             processed_frame = process_frame(frame)
-            processed_frames.append(processed_frame)  # Add the processed frame to the list
+            processed_frames.append(processed_frame)
 
-        # After processing all frames, combine them into a video
+        # After processing frames, overlay final decision on last frame
+        if processed_frames:
+            # Modify the last frame with decision text overlay
+            processed_frames[-1] = process_frame_with_decision(
+                input_data.frames[-1], input_data.decision.isOut
+            )
+
+        # Combine into a single output video
         combine_frames_to_video(processed_frames, "output_video.mp4")
 
-        return StreamAnalysisOutput(message="Frames processed and video created successfully")
+        return StreamAnalysisOutput(
+            message="Frames processed and decision overlay added to final frame. Video created."
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing frames: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing stream: {str(e)}")
