@@ -82,6 +82,10 @@ class BallTracker:
         self.white_lower = np.array([0, 0, 200], dtype=np.uint8)
         self.white_upper = np.array([180, 30, 255], dtype=np.uint8)
         
+        # green tennis ball
+        self.green_lower = np.array([20, 100, 100], dtype=np.uint8)
+        self.green_upper = np.array([35, 255, 255], dtype=np.uint8)
+
         # Add minimum radius parameter
         self.min_radius = config.get("min_ball_radius", 5)
     
@@ -136,10 +140,12 @@ class BallTracker:
         mask_red1 = cv2.inRange(hsv, self.red_lower1, self.red_upper1)
         mask_red2 = cv2.inRange(hsv, self.red_lower2, self.red_upper2)
         mask_white = cv2.inRange(hsv, self.white_lower, self.white_upper)
+        mask_green = cv2.inRange(hsv, self.green_lower, self.green_upper)
         
         # Combine masks
         mask = cv2.bitwise_or(mask_red1, mask_red2)
         mask = cv2.bitwise_or(mask, mask_white)
+        mask = cv2.bitwise_or(mask, mask_green)
         
         # Noise removal
         mask = cv2.erode(mask, None, iterations=2)
