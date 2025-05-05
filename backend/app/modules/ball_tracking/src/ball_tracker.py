@@ -135,7 +135,7 @@ class BallTracker:
         """
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    
+        
         # Create masks for both red ranges and white
         mask_red1 = cv2.inRange(hsv, self.red_lower1, self.red_upper1)
         mask_red2 = cv2.inRange(hsv, self.red_lower2, self.red_upper2)
