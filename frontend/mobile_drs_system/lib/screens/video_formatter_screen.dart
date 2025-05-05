@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart';
 import '../utils/video_split_converter.dart';
 import '../routes/app_routes.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 
 Future<void> DeleteVideo(String videoPath) async {
   final videoFile = File(videoPath);
@@ -81,6 +84,26 @@ class _VideoFormatScreenState extends State<VideoFormatScreen> {
                             isProcessing = false;
                           });
                           await DeleteVideo(widget.mainVideoPath);
+
+                          try {
+                            final response = await http
+                                .post(
+                                  Uri.parse(
+                                      'http://10.0.2.2:8000/receive-json'),
+                                  headers: {'Content-Type': 'application/json'},
+                                  body: jsonEncode(result),
+                                )
+                                .timeout(Duration(
+                                    seconds: 5)); // Prevent indefinite hangs
+
+                            if (response.statusCode == 200) {
+                              print('Success: ${response.body}');
+                            } else {
+                              print('Server error: ${response.statusCode}');
+                            }
+                          } catch (e) {
+                            print('Request failed: $e');
+                          }
                         },
                         child: const Text('Yes'),
                       ),
