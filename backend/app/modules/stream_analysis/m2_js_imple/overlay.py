@@ -13,6 +13,14 @@ base_image = cv2.imread(BASE_IMAGE_PATH)
 if base_image is None:
     raise FileNotFoundError(f"Base image not found at {BASE_IMAGE_PATH}")
 
+def process_frame_with_decision(frame: FrameDetection, is_out: bool) -> np.ndarray:
+    img = process_frame(frame)  # Start from the original processed frame
+    text = "OUT" if is_out else "NOT OUT"
+    color = (0, 0, 255) if is_out else (0, 255, 0)
+
+    cv2.putText(img, text, (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 3)
+    return img
+
 def process_frame(frame: FrameDetection) -> np.ndarray:
     # Clone the base image to draw on it
     img = base_image.copy()
