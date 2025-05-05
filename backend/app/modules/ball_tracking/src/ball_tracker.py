@@ -182,6 +182,66 @@ class BallTracker:
                 return ((int(x), int(y)), int(radius))
         
         return None
+    
+    def detect_ball_candidate(self, frame: np.ndarray):
+        """
+        Generalized ball detection that works regardless of color.
+
+        Returns:
+            (center, radius) if a valid ball is found, else None
+        """
+        height, width = frame.shape[:2]
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (9, 9), 2)
+
+        # ----- COLOR MASKS -----
+        mask_red1 = cv2.inRange(hsv, self.red_lower1, self.red_upper1)
+        mask_red2 = cv2.inRange(hsv, self.red_lower2, self.red_upper2)
+        mask_white = cv2.inRange(hsv, self.white_lower, self.white_upper)
+        mask_green = cv2.inRange(hsv, np.array([35, 150, 100]), np.array([85, 255, 255]))  # Neon green
+        mask_yellow = cv2.inRange(hsv, np.array([20, 100, 100]), np.array([35, 255, 255]))
+
+        combined_mask = mask_red1 | mask_red2 | mask_white | mask_green | mask_yellow
+        combined_mask = cv2.erode(combined_mask, None, iterations=2)
+        combined_mask = cv2.dilate(combined_mask, None, iterations=2)
+
+        # ----- SHAPE FILTER VIA CONTOURS -----
+        contours, _ = cv2.findContours(combined_mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        valid_contours = []
+
+        for c in contours:
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            area = cv2.contourArea(c)
+            perimeter = cv2.arcLength(c, True)
+            if perimeter == 0:
+                continue
+            circularity = 4 * np.pi * area / (perimeter ** 2)
+
+            if (radius > self.min_radius and
+                circularity > 0.7 and
+                area > 3 * np.pi * (self.min_radius ** 2)):
+                valid_contours.append((c, radius))
+
+        if valid_contours:
+            best_contour = min(valid_contours, key=lambda item: abs(cv2.minEnclosingCircle(item[0])[0][0] - width / 2))
+            ((x, y), radius) = cv2.minEnclosingCircle(best_contour[0])
+            return ((int(x), int(y)), int(radius))
+
+        # ----- HOUGH CIRCLE FALLBACK -----
+        circles = cv2.HoughCircles(
+            blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30,
+            param1=50, param2=30,
+            minRadius=self.min_radius, maxRadius=60
+        )
+
+        if circles is not None:
+            circles = np.uint16(np.around(circles[0]))
+            best_circle = min(circles, key=lambda c: abs(c[0] - width / 2))
+            x, y, r = best_circle
+            return ((int(x), int(y)), int(r))
+
+        return None
 
     def set_calibration(self, camera_matrix, dist_coeffs):
         """
@@ -212,7 +272,7 @@ class BallTracker:
         
         # If no ball detected
         if not ball_detections:
-            colour_detection=self.detect_ball_color(frame)
+            colour_detection = self.detect_ball_color(frame)
             if colour_detection:
                 center,radius=colour_detection
                 ball_detections=[{

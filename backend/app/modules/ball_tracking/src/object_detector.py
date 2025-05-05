@@ -149,7 +149,7 @@ class ObjectDetector:
 
         results["batsman"] = detections
          
-
+    
     def _detect_batsman_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
      
         frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
@@ -236,15 +236,22 @@ class ObjectDetector:
         """
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
-        # Create masks for both red ranges and white
+        #creating masks
         mask_red1 = cv2.inRange(hsv, self.red_lower1, self.red_upper1)
         mask_red2 = cv2.inRange(hsv, self.red_lower2, self.red_upper2)
         mask_white = cv2.inRange(hsv, self.white_lower, self.white_upper)
         
-        # Combine masks using bitwise OR
+        # Neon Green
+        mask_green = cv2.inRange(hsv, np.array([35, 150, 100]), np.array([85, 255, 255]))
+
+        # Yellow
+        mask_yellow = cv2.inRange(hsv, np.array([20, 100, 100]), np.array([35, 255, 255]))
+
+        # Combine all masks using bitwise OR
         combined_mask = cv2.bitwise_or(mask_red1, mask_red2)
         combined_mask = cv2.bitwise_or(combined_mask, mask_white)
-        
+        combined_mask = cv2.bitwise_or(combined_mask, mask_green)
+        combined_mask = cv2.bitwise_or(combined_mask, mask_yellow)
         # Noise removal
         combined_mask = cv2.erode(combined_mask, None, iterations=2)
         combined_mask = cv2.dilate(combined_mask, None, iterations=2)
