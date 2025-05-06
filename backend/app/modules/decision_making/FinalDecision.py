@@ -33,6 +33,7 @@ def bat_edge_detect(data):
 def wicket_impact(data):
     return {"will_hit_stumps": data['will_hit_stumps']}
 
+#computing the final decision
 def final_decision():
     data = get_combined_data()
     inline = check_ball_inline(data)
