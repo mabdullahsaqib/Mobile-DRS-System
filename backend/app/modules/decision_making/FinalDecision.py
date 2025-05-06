@@ -6,26 +6,47 @@ from Module4 import get_combined_data
 # app = FastAPI()
 
 def check_ball_inline(data):
-    positions = data['ball_trajectory']['positions']
-    stumps = data['stumps_data']
+    ball_frames = []
 
-    # Find the first position where the ball hits the ground (y close to 0)
-    impact_position = next((p for p in positions if abs(p['y']) <= 0.01), None)
+    #get the ball frames
+    for frame in data:
+        ball_data = frame.get("detections", {}).get("ball", [])
+        if ball_data:
+            ball_frames.append({
+                "timestamp": frame["timestamp"],
+                "ball_center": ball_data[0]["center"],  # (x, y)
+                "ball": ball_data[0],
+                "stumps": frame["detections"].get("stumps", [])
+            })
 
-    if not impact_position:
-        return {'inline': False}
+    # select the ball frame where the ball is closest to the ground
+    ground_frame = min(ball_frames, key=lambda x: x["ball_center"][1], default=None)
 
-    x_impact = impact_position['x']
-    z_impact = impact_position['z']
+    if ground_frame:
+        ball_cx, ball_cy = ground_frame["ball_center"]
+        stumps = ground_frame["stumps"]
 
-    stumps_x = stumps['position']['base_center']['x']
-    stump_z_min = min(s['top_position']['z'] for s in stumps['individual_stumps'])
-    stump_z_max = max(s['top_position']['z'] for s in stumps['individual_stumps'])
+        if not stumps:
+            return {"inline": False}
 
-    # Check if the ball hit the ground within the x range of the stumps
-    inline = (abs(x_impact - stumps_x) < 0.2) and (stump_z_min <= z_impact <= stump_z_max)
+      #calculate the bounding box of the stumps
+        x, y, width, height = stumps[0]["bbox"]
+        left = x
+        top = y
+        right = x + width
+        bottom = y - height
 
-    return {'inline': inline}
+        # basic check to see if the ball is within the stumps bounding box
+        inline = left <= ball_cx <= right and top >= ball_cy >= bottom
+
+        print(f"Ball impact frame timestamp: {ground_frame['timestamp']}")
+        print(f"Ball center: ({ball_cx}, {ball_cy})")
+        print(f"Stumps combined bbox: left={left}, top={top}, right={right}, bottom={bottom}")
+
+        return {"inline": inline}
+
+    # If no valid frame found
+    return {"inline": False}
 
 def bat_edge_detect(data):
     return {"edge_detected": data['edge_detected']}
@@ -33,7 +54,6 @@ def bat_edge_detect(data):
 def wicket_impact(data):
     return {"will_hit_stumps": data['will_hit_stumps']}
 
-#computing the final decision
 def final_decision():
     data = get_combined_data()
     inline = check_ball_inline(data)
