@@ -10,6 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: frontend/mobile_drs_system
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,17 +27,13 @@ jobs:
           channel: 'stable'
 
       - name: Install dependencies
-        run: |
-          cd frontend/mobile-drs-system
-          flutter pub get
+        run: flutter pub get
 
-      - name: Build APK
-        run: |
-          cd frontend/mobile-drs-system
-          flutter build apk --release
+      - name: Build APK (release)
+        run: flutter build apk --release
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: frontend/mobile-drs-system/build/app/outputs/flutter-apk/app-release.apk
+          path: frontend/mobile_drs_system/build/app/outputs/flutter-apk/app-release.apk
