@@ -1,5 +1,7 @@
 from typing import List, Dict, Optional
-from modules.trajectory_analysis.models.Input_model import Position3D, Velocity3D, Spin
+
+import numpy as np
+from Input_model import Position3D, Velocity3D, Spin
 
 # Constants
 GRAVITY = -9.81  # m/s²
@@ -98,25 +100,23 @@ def calculate_velocity(p1, p2, t1, t2):
         return (0, 0)
     return (dx / dt, dy / dt)
 
-
-
-
-
-
-
+min_drop = 0.04
 def detect_bounce(
     ball_positions: List[List[float]]
 ) -> Optional[int]:
-    """
-    Detects the frame index where the ball bounces.
-    Simple method: Bounce typically seen when y-coordinate increases after a decrease.
-    (In most camera setups, vertical coordinate 'y' grows downward.)
-    """
-    for i in range(1, len(ball_positions) - 1):
-        prev_y = ball_positions[i - 1][1]
-        curr_y = ball_positions[i][1]
-        next_y = ball_positions[i + 1][1]
+    arr = np.array(ball_positions)
+    y = arr[:, 1]
 
-        if curr_y > prev_y and next_y < curr_y:
-            return i
+        # First differences
+    dy = np.diff(y)
+    # Identify indices where slope goes from negative to positive
+    zero_cross = np.where(np.diff(np.sign(dy)) > 0)[0] + 1
+    for idx in zero_cross:
+        # Check local minimum condition
+        if y[idx] < y[idx - 1] and y[idx] < y[idx + 1]:
+            # Check that drop from last peak is significant
+            peak_before = y[:idx].max()
+            drop = peak_before - y[idx]
+            if drop >= min_drop:
+                return ball_positions[idx]
     return None

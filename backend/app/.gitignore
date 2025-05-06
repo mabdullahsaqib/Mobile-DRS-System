@@ -52,6 +52,8 @@ env.bak/
 venv.bak/
 
 
+**/data/
+
 
 # mkdocs documentation
 /site

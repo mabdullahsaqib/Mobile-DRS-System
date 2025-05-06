@@ -42,13 +42,10 @@ def get_ball_positions(frames: List[FrameInput]) -> List[List[float]]:
     positions: List[List[float]] = []
 
     for frame in frames:
-        ball_detections = frame.detections.ball
-        if not ball_detections:
+        ball_position = frame.ball_trajectory.current_position
+        if not ball_position:
             continue
-
-        det = ball_detections[0]
-        x, y, _ = det.centre.x, det.centre.y, det.centre.z
-        positions.append([x, y, 0.0])
+        positions.append([ball_position.x, ball_position.y, ball_position.z])
 
     return positions
 
