@@ -15,27 +15,27 @@ jobs:
         working-directory: frontend/mobile_drs_system
 
     steps:
-      - name: ✅ Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ☕ Set up Java
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'oracle'
           java-version: '17'
 
-      - name: 🚀 Set up Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: flutter pub get
 
-      - name: 🛠️ Build APK (release)
+      - name: Build APK (release)
         run: flutter build apk --release
 
-      - name: 📤 Upload APK artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
