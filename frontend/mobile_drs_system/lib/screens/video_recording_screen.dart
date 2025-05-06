@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_media_store/flutter_media_store.dart';
@@ -9,6 +10,7 @@ import 'package:vector_math/vector_math_64.dart' as vm;
 
 class VideoRecordingScreen extends StatefulWidget {
   const VideoRecordingScreen({super.key});
+
   @override
   State<VideoRecordingScreen> createState() => _VideoRecordingScreenState();
 }
@@ -17,19 +19,17 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   bool _isLoading = true;
   bool _isRecording = false;
   String _videoPath = '';
-  final _duration = 10;
+  final int _duration = 10;
   CameraController? _controller;
   Completer<void>? _recordingCompleter;
   Timer? _recordingTimer;
+  Duration _recordingTime = Duration.zero;
 
   vm.Vector3 _accel = vm.Vector3.zero();
   vm.Vector3 _gyro = vm.Vector3.zero();
   vm.Vector3 _mag = vm.Vector3.zero();
-
   DateTime? _last;
   final KalmanFilter _kf = KalmanFilter();
-
-  //List of Position and Rotation
   final List<vm.Vector3> _positions = [];
   final List<vm.Vector3> _rotations = [];
   Timer? _savingTimer;
@@ -39,21 +39,17 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   void initState() {
     super.initState();
     initializeCameras();
-
     _calibrateGyro();
 
-    accelerometerEvents
-        .listen((e) => setState(() => _accel = vm.Vector3(e.x, e.y, e.z)));
-    gyroscopeEvents
-        .listen((e) => setState(() => _gyro = vm.Vector3(e.x, e.y, e.z)));
-    magnetometerEvents
-        .listen((e) => setState(() => _mag = vm.Vector3(e.x, e.y, e.z)));
+    accelerometerEvents.listen((e) => _accel = vm.Vector3(e.x, e.y, e.z));
+    gyroscopeEvents.listen((e) => _gyro = vm.Vector3(e.x, e.y, e.z));
+    magnetometerEvents.listen((e) => _mag = vm.Vector3(e.x, e.y, e.z));
 
-    Future.delayed(Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 1), () {
       _kf.initializeFromAccel(_accel);
     });
 
-    Timer.periodic(Duration(milliseconds: 20), (_) => _updateFusion());
+    Timer.periodic(const Duration(milliseconds: 20), (_) => _updateFusion());
   }
 
   void _calibrateGyro() {
@@ -82,12 +78,11 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
     _kf.update(dt: dt, accel: _accel, gyro: _gyro, mag: _mag);
   }
 
-  void initializeCameras() async {
-    if (_controller != null) return; // Already initialized
+  Future<void> initializeCameras() async {
+    if (_controller != null) return;
     final cameras = await availableCameras();
     _controller = CameraController(
-      cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.back),
+      cameras.firstWhere((camera) => camera.lensDirection == CameraLensDirection.back),
       ResolutionPreset.high,
     );
     await _controller!.initialize();
@@ -98,33 +93,36 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   }
 
   Future<void> serverStartRecording() async {
-    if (_isRecording ||
-        _controller == null ||
-        !_controller!.value.isInitialized) {
+    if (_isRecording || _controller == null || !_controller!.value.isInitialized) {
       throw Exception('Camera not ready');
     }
 
     await _controller!.startVideoRecording();
-
-    //Sace the position and rotation of the camera every 33ms (30fps)
     _shouldSave = true;
-    _savingTimer = Timer.periodic(Duration(milliseconds: 33), (_) {
-      if (_shouldSave) {
-        _positions.add(
-          vm.Vector3(
-            double.parse(_kf.position.x.toStringAsFixed(2)),
-            double.parse(_kf.position.y.toStringAsFixed(2)),
-            double.parse(_kf.position.z.toStringAsFixed(2)),
-          ),
-        );
+    _recordingTime = Duration.zero;
 
-        _rotations.add(
-          vm.Vector3(
-            double.parse(_kf.rotation.x.toStringAsFixed(2)),
-            double.parse(_kf.rotation.y.toStringAsFixed(2)),
-            double.parse(_kf.rotation.z.toStringAsFixed(2)),
-          ),
-        );
+    _savingTimer = Timer.periodic(const Duration(milliseconds: 33), (_) {
+      if (_shouldSave) {
+        _positions.add(vm.Vector3(
+          double.parse(_kf.position.x.toStringAsFixed(2)),
+          double.parse(_kf.position.y.toStringAsFixed(2)),
+          double.parse(_kf.position.z.toStringAsFixed(2)),
+        ));
+        _rotations.add(vm.Vector3(
+          double.parse(_kf.rotation.x.toStringAsFixed(2)),
+          double.parse(_kf.rotation.y.toStringAsFixed(2)),
+          double.parse(_kf.rotation.z.toStringAsFixed(2)),
+        ));
+      }
+    });
+
+    _recordingCompleter = Completer<void>();
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _recordingTime += const Duration(seconds: 1);
+      });
+      if (_recordingTime.inSeconds >= _duration) {
+        _recordingCompleter?.complete();
       }
     });
 
@@ -132,37 +130,26 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
       _isRecording = true;
     });
 
-    // Automatically stop after duration seconds
-    _recordingCompleter = Completer<void>();
-    _recordingTimer = Timer(Duration(seconds: _duration), () {
-      _recordingCompleter?.complete();
-    });
-
     await _recordingCompleter!.future;
-
-    //If recording is stopped then stopRecording() was called before startRecording could finish;
     if (_isRecording) {
       await serverStopRecording();
     }
-    _recordingTimer = null;
-    _recordingCompleter = null;
   }
 
   Future<void> serverStopRecording() async {
     if (!_isRecording || _controller == null) return;
 
     final file = await _controller!.stopVideoRecording();
-
-    //Stop saving the position and rotation of the camera
     _shouldSave = false;
     _savingTimer?.cancel();
     _savingTimer = null;
+    _recordingTimer?.cancel();
+    _recordingTime = Duration.zero;
 
     setState(() {
       _isRecording = false;
     });
-    //Once video recording is stopped, we save file to the device and then
-    //return the path to the file
+
     final flutterMediaStore = FlutterMediaStore();
     await flutterMediaStore.saveFile(
       fileData: await file.readAsBytes(),
@@ -178,15 +165,6 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
       },
     );
 
-    if (_recordingCompleter != null && !_recordingCompleter!.isCompleted) {
-      _recordingCompleter!.complete();
-    }
-    _recordingTimer?.cancel();
-    _recordingTimer = null;
-    _recordingCompleter = null;
-
-    //Pop the screen and start waiting in the waitingScreen for the secondary device to send the video
-    //This is used to show the secondary video after the recording is done
     if (mounted) {
       Navigator.pushNamed(
         context,
@@ -202,50 +180,87 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
 
   @override
   void dispose() {
+    _controller?.dispose();
+    _recordingTimer?.cancel();
+    _savingTimer?.cancel();
     super.dispose();
-    if (_controller != null) {
-      _controller!.dispose();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    //If its secondary then we stop recording based on incoming clientProvider messages
-    Widget buttons = Padding(
-        padding: const EdgeInsets.only(bottom: 16.0),
-        child: _isRecording
-            ? FloatingActionButton(
-                onPressed: serverStopRecording,
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                child: Icon(Icons.stop),
-              )
-            : FloatingActionButton(
-                onPressed: serverStartRecording,
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                child: Icon(Icons.play_arrow),
-              ));
+    String formattedTime = _recordingTime.toString().split('.').first.padLeft(5, "0");
 
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Video Recording'),
-        ),
-        body: _isLoading
-            ? Center(
-                child: Column(
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
-                    const Text('Loading camera...'),
-                  ],
+      backgroundColor: Colors.black,
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            )
+          : Stack(
+              children: [
+                // Camera Preview
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color(0xFF0A3F24), // theme-colored border
+                        width: 6,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(0),
+                      child: CameraPreview(_controller!),
+                    ),
+                  ),
                 ),
-              )
-            : Stack(
-                children: <Widget>[
-                  CameraPreview(_controller!),
-                  Align(alignment: Alignment.bottomCenter, child: buttons),
-                ],
-              ));
+
+                // Timer
+                Positioned(
+                  top: 48,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        formattedTime,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Record Button
+                Positioned(
+                  bottom: 40,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: _isRecording ? serverStopRecording : serverStartRecording,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 6),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
   }
 }
