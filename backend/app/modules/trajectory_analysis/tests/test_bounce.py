@@ -32,7 +32,7 @@ def process_ball_data(frames):
 
 def visualize_positions(ball_positions, timestamps):
     import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
+    from mpl_toolkits.mplot3d import Axes3D 
 
     x_coords = [pos[0] for pos in ball_positions]
     y_coords = [pos[1] for pos in ball_positions]
