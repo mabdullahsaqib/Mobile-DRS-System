@@ -1,10 +1,9 @@
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from Module4 import app as module4_app
+# from fastapi import FastAPI
+# from fastapi.testclient import TestClient
+from Module4 import get_combined_data
 
-client = TestClient(module4_app)
-app = FastAPI()
-MODULE_4_URL = "http://127.0.0.1:8001/module4_combined_data"
+
+# app = FastAPI()
 
 def check_ball_inline(data):
     positions = data['ball_trajectory']['positions']
@@ -34,18 +33,20 @@ def bat_edge_detect(data):
 def wicket_impact(data):
     return {"will_hit_stumps": data['will_hit_stumps']}
 
-@app.get("/finaldecision")
+#computing the final decision
 def final_decision():
-    response = client.get(MODULE_4_URL)
-    data = response.json()
-
-    # Call the functions directly
+    data = get_combined_data()
     inline = check_ball_inline(data)
     edge_detected = bat_edge_detect(data)
     will_hit_stumps = wicket_impact(data)
-
-    return {
-        "inline": inline["inline"],
-        "edge_detected": edge_detected["edge_detected"],
-        "will_hit_stumps": will_hit_stumps["will_hit_stumps"]
-    }
+    print("Inline:", inline)
+    print("Edge Detected:", edge_detected)
+    print("Will Hit Stumps:", will_hit_stumps)
+    if not inline["inline"]:
+        return {"Out": False, "Reason": "not inline"}
+    elif edge_detected["edge_detected"]:
+        return {"Out": False, "Reason": "Bat Edge Detected"}
+    elif not will_hit_stumps["will_hit_stumps"]:
+        return {"Out": False, "Reason": "Missing Wicket"}
+    else:
+        return {"Out": True, "Reason": "Out"}
