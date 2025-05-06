@@ -1,75 +1,51 @@
-# Example input format for /SendDataToBackend POST endpoint:
-#
-# {
-#   "results": [
-#     {
-#       "frameId": 0,
-#       "frameData": "string",  # base64-encoded JPEG string
-#       "audioData": "string",  # base64-encoded PCM audio string
-#       "cameraPosition": {
-#         "x": 0,
-#         "y": 0,
-#         "z": 0
-#       },
-#       "cameraRotation": {
-#         "x": 0,
-#         "y": 0,
-#         "z": 0
-#       }
-#     }
-#   ]
-# }
-
-from fastapi import FastAPI
-from modules.ball_tracking.router import router as ball_tracking_router
-from modules.edge_detection.router import router as edge_detection_router
-from modules.trajectory_analysis.service import analyze_trajectory
-from modules.decision_making.router import router as decision_making_router
-from modules.stream_analysis.router import router as stream_analysis_router
-from core.InputModel import VideoAnalysisInput
-
-app = FastAPI()
-
-# Register all modules
-app.include_router(ball_tracking_router, prefix="/ball_tracking", tags=["Tracking"])
-app.include_router(edge_detection_router, prefix="/edge_detection", tags=["Edge Detection"])
-#app.include_router(trajectory_analysis_router, prefix="/trajectory_analysis", tags=["Trajectory"])
-app.include_router(decision_making_router, prefix="/decision_making", tags=["Decision"])
-app.include_router(stream_analysis_router, prefix="/stream_analysis", tags=["Stream"])
-
-
 from fastapi import FastAPI, HTTPException
-from modules.ball_tracking.router import router as ball_tracking_router
-from modules.edge_detection.router import router as edge_detection_router
-from modules.trajectory_analysis.router import router as trajectory_analysis_router
-from modules.decision_making.router import router as decision_making_router
-from modules.stream_analysis.router import router as stream_analysis_router
+from pydantic import BaseModel
 from core.InputModel import VideoAnalysisInput
+
+from modules.ball_tracking.service import run_ball_tracking
+from modules.edge_detection.service import run_edge_detection
+from modules.trajectory_analysis.service import run_trajectory_analysis
+from modules.decision_making.service import run_decision_making
+from modules.stream_analysis.service import run_stream_analysis
 
 app = FastAPI()
 
-# Register all modules
-app.include_router(ball_tracking_router, prefix="/ball_tracking", tags=["Tracking"])
-app.include_router(edge_detection_router, prefix="/edge_detection", tags=["Edge Detection"])
-app.include_router(trajectory_analysis_router, prefix="/trajectory_analysis", tags=["Trajectory"])
-app.include_router(decision_making_router, prefix="/decision_making", tags=["Decision"])
-app.include_router(stream_analysis_router, prefix="/stream_analysis", tags=["Stream"])
-
-# endpoint to receive video+audio data from frontend
 @app.post("/SendDataToBackend")
 async def analyze_video(input_data: VideoAnalysisInput):
     try:
         frame_count = len(input_data.results)
-        print(f"Received {frame_count} frames from frontend")
+        print(f"[INFO] Received {frame_count} frames from frontend")
 
-        
-        # Dispatch or call internal services/modules here as needed
-        # Sab modules ke function through which they will extract data from VideoAnalysisInput
+        # === Module 2: Ball Tracking ===
+        ball_data = run_ball_tracking(input_data.results)
+        print("[✓] Ball tracking complete")
+
+        # === Module 3: Edge Detection ===
+        edge_result = run_edge_detection(ball_data)
+        print("[✓] Edge detection complete")
+
+        # === Module 4: Trajectory Analysis ===
+        trajectory_data = run_trajectory_analysis(edge_result)
+        print("[✓] Trajectory analysis complete")
+
+        # === Module 5: Decision Making ===
+        final_decision = run_decision_making(trajectory_data)
+        print("[✓] Final decision:", final_decision)
+
+        # === Module 6: Stream Analysis (Video + Final Decision) ===
+        response_video_base64 = run_stream_analysis(
+            input_data.results,
+            ball_data,
+            final_decision
+        )
+        print("[✓] Stream analysis complete, returning response")
 
         return {
-            "message": "Data received successfully",
-            "frames_received": frame_count
+            "status": "success",
+            "decision": final_decision,
+            "video": response_video_base64  # base64-encoded video string
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print("[ERROR]", str(e))
+        raise HTTPException(status_code=500, detail=f"Server error: {e}")
