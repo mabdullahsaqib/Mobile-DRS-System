@@ -47,3 +47,4 @@ pubspec.lock
 
 /macos/flutter/*
 /windows/flutter/*
+/linux/flutter/*

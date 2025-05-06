@@ -6,7 +6,9 @@ import 'package:mobile_drs_system/screens/video_player_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart';
 
+
 class AppRoutes {
+  static const String splash = '/splash';
   static const String home = '/';
   static const String master = '/master';
   static const String kalanFilter = '/kalan-filter';

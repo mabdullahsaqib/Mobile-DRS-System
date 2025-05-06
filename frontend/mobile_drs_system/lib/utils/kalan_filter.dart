@@ -101,10 +101,11 @@ class KalmanFilter {
 
     // 11) Adaptive threshold & deadband
     double thresh = baseThreshold;
-    if (linear.length < thresh)
+    if (linear.length < thresh) {
       stillCount++;
-    else
+    } else {
       stillCount = 0;
+    }
     if (stillCount > stillThreshold) velocity = Vector3.zero();
     if (stillCount > 0) velocity *= 0.95;
 
