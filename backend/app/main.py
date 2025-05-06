@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from uuid import uuid4
+import os, json, base64
 from core.InputModel import VideoAnalysisInput
 
 from modules.ball_tracking.service import run_ball_tracking
@@ -10,42 +12,78 @@ from modules.stream_analysis.service import run_stream_analysis
 
 app = FastAPI()
 
-@app.post("/SendDataToBackend")
-async def analyze_video(input_data: VideoAnalysisInput):
+REVIEW_DIR = "app/reviews"
+
+@app.post("/submit-review")
+async def submit_review(input_data: VideoAnalysisInput):
     try:
-        frame_count = len(input_data.results)
-        print(f"[INFO] Received {frame_count} frames from frontend")
+        review_id = str(uuid4())
+        review_path = os.path.join(REVIEW_DIR, review_id)
+        os.makedirs(review_path, exist_ok=True)
 
-        # === Module 2: Ball Tracking ===
-        ball_data = run_ball_tracking(input_data.results)
-        print("[✓] Ball tracking complete")
+        # Save input data
+        with open(os.path.join(review_path, "input.json"), "w") as f:
+            f.write(input_data.json())
 
-        # === Module 3: Edge Detection ===
-        edge_result = run_edge_detection(ball_data)
-        print("[✓] Edge detection complete")
+        # Optionally, kick off processing here (sync version below)
+        try:
+            # Module 2: Ball Tracking
+            ball_data = run_ball_tracking(input_data.results)
 
-        # === Module 4: Trajectory Analysis ===
-        trajectory_data = run_trajectory_analysis(edge_result)
-        print("[✓] Trajectory analysis complete")
+            # Module 3: Edge Detection
+            edge_result = run_edge_detection(ball_data)
 
-        # === Module 5: Decision Making ===
-        final_decision = run_decision_making(trajectory_data)
-        print("[✓] Final decision:", final_decision)
+            # Module 4: Trajectory Analysis
+            trajectory_data = run_trajectory_analysis(edge_result)
 
-        # === Module 6: Stream Analysis (Video + Final Decision) ===
-        response_video_base64 = run_stream_analysis(
-            input_data.results,
-            ball_data,
-            final_decision
-        )
-        print("[✓] Stream analysis complete, returning response")
+            # Module 5: Decision Making
+            final_decision = run_decision_making(trajectory_data)
+
+            # Module 6: Stream Analysis
+            result_video = run_stream_analysis(
+                input_data.results, ball_data, final_decision
+            )
+
+            # Save result video
+            video_path = os.path.join(review_path, "result.mp4")
+            with open(video_path, "wb") as vf:
+                vf.write(base64.b64decode(result_video))
+
+            # Save decision
+            with open(os.path.join(review_path, "result.json"), "w") as df:
+                json.dump({"decision": final_decision}, df)
+
+        except Exception as processing_error:
+            print(f"[ERROR] Processing failed for {review_id}: {processing_error}")
+            # Optionally log failure
+
+        return {"review_id": review_id}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Submit error: {e}")
+
+
+@app.get("/review-result/{review_id}")
+async def get_review_result(review_id: str):
+    try:
+        review_path = os.path.join(REVIEW_DIR, review_id)
+        result_file = os.path.join(review_path, "result.json")
+        video_file = os.path.join(review_path, "result.mp4")
+
+        if not os.path.exists(result_file):
+            return {"status": "processing"}
+
+        with open(result_file, "r") as rf:
+            decision_data = json.load(rf)
+
+        with open(video_file, "rb") as vf:
+            encoded_video = base64.b64encode(vf.read()).decode("utf-8")
 
         return {
-            "status": "success",
-            "decision": final_decision,
-            "video": response_video_base64  # base64-encoded video string
+            "status": "complete",
+            "decision": decision_data["decision"],
+            "video": encoded_video
         }
 
     except Exception as e:
-        print("[ERROR]", str(e))
-        raise HTTPException(status_code=500, detail=f"Server error: {e}")
+        raise HTTPException(status_code=500, detail=f"Result fetch error: {e}")
