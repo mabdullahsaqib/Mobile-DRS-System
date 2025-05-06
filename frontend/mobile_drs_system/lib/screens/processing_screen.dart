@@ -1,7 +1,56 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-class ProcessingScreen extends StatelessWidget {
-  const ProcessingScreen({super.key});
+class ProcessingScreen extends StatefulWidget {
+  final String reviewId;
+  const ProcessingScreen({super.key, required this.reviewId});
+
+  @override
+  State<ProcessingScreen> createState() => _ProcessingScreenState();
+}
+
+class _ProcessingScreenState extends State<ProcessingScreen> {
+  Timer? _pollingTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      try {
+        final response = await http.get(
+          Uri.parse('http://10.0.2.2:8000/get-review/${widget.reviewId}'),
+        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = jsonDecode(response.body);
+          if (data['status'] == 'done') {
+            _pollingTimer?.cancel();
+
+            // Navigate to Decision Screen with result data
+            Navigator.pushReplacementNamed(
+              context,
+              '/decision',
+              arguments: data,
+            );
+          }
+        }
+      } catch (e) {
+        print('Polling error: $e');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,8 +62,8 @@ class ProcessingScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
+              children: const [
+                Text(
                   'REVIEW IN PROGRESS',
                   style: TextStyle(
                     color: Colors.greenAccent,
@@ -23,14 +72,11 @@ class ProcessingScreen extends StatelessWidget {
                     letterSpacing: 1.5,
                   ),
                 ),
-                const SizedBox(height: 24),
-
-                // Optional: Animated Icon / Logo
-                const Icon(Icons.sports_cricket,
+                SizedBox(height: 24),
+                Icon(Icons.sports_cricket,
                     size: 64, color: Colors.greenAccent),
-
-                const SizedBox(height: 24),
-                const Text(
+                SizedBox(height: 24),
+                Text(
                   'Third umpire is watching carefully...',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -38,8 +84,8 @@ class ProcessingScreen extends StatelessWidget {
                     fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 48),
-                const CircularProgressIndicator(
+                SizedBox(height: 48),
+                CircularProgressIndicator(
                   color: Colors.greenAccent,
                   strokeWidth: 4,
                 ),

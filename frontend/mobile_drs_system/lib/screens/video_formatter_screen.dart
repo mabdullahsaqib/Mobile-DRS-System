@@ -55,10 +55,7 @@ class _VideoFormatScreenState extends State<VideoFormatScreen> {
 Future<void> handleRequestReview() async {
   if (isProcessing) return;
 
-  Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const ProcessingScreen()),
-  );
+  setState(() => isProcessing = true);
 
   result = await processVideo(
     widget.mainVideoPath,
@@ -66,25 +63,37 @@ Future<void> handleRequestReview() async {
     widget.cameraRotations,
   );
 
-  await DeleteVideo(widget.mainVideoPath);
-
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/receive-json'),
+      Uri.parse('http://10.0.2.2:8000/submit-review'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(result),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 200) {
-      print('Review request sent successfully.');
-      // TODO: Navigate to result screen
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final String reviewId = data['review_id'];
+
+      await DeleteVideo(widget.mainVideoPath);
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProcessingScreen(reviewId: reviewId),
+          ),
+        );
+      }
     } else {
       print('Server error: ${response.statusCode}');
     }
   } catch (e) {
     print('Request failed: $e');
   }
+
+  setState(() => isProcessing = false);
 }
+
 
   @override
   Widget build(BuildContext context) {
