@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 
 import numpy as np
-from Input_model import Position3D, Velocity3D, Spin
+from Input_model import Position3D, Velocity3D, Spin, Acceleration3D
 
 # Constants
 GRAVITY = -9.81  # m/s²
@@ -107,7 +107,7 @@ def detect_bounce(
     arr = np.array(ball_positions)
     y = arr[:, 1]
 
-        # First differences
+    # First differences
     dy = np.diff(y)
     # Identify indices where slope goes from negative to positive
     zero_cross = np.where(np.diff(np.sign(dy)) > 0)[0] + 1
@@ -118,5 +118,31 @@ def detect_bounce(
             peak_before = y[:idx].max()
             drop = peak_before - y[idx]
             if drop >= min_drop:
-                return ball_positions[idx]
+                return idx
+    return None
+
+
+def detect_bounce_kinematic(
+    velocities: List[List[float]],
+    accelerations: List[List[float]],
+    min_acc_spike: float,
+) -> Optional[int]:
+    
+    n = len(velocities)
+    if n < 2 or len(accelerations) != n:
+        return None
+
+    for i in range(1, n):
+        vy_prev = velocities[i - 1][1]
+        vy_curr = velocities[i][1]
+        ay_curr = accelerations[i][1]
+
+        # 1) vertical velocity reversal
+        cond_vel = (vy_prev < 0.0) and (vy_curr > 0.0)
+        # 2) upward acceleration spike
+        cond_acc = ay_curr >= min_acc_spike
+
+        if cond_vel and cond_acc:
+            return i
+
     return None
