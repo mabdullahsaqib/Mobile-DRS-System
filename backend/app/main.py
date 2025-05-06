@@ -4,11 +4,11 @@ from uuid import uuid4
 import os, json, base64, threading
 from core.InputModel import VideoAnalysisInput
 
-from modules.ball_tracking.service import run_ball_tracking
-from modules.edge_detection.service import run_edge_detection
-from modules.trajectory_analysis.service import run_trajectory_analysis
-from modules.decision_making.service import run_decision_making
-from modules.stream_analysis.service import run_stream_analysis
+from modules.ball_tracking.src import ball_tracking
+from modules.edge_detection.src import edge_detection
+from modules.trajectory_analysis.src import trajectory_analysis
+from modules.decision_making.src import decision_making
+from modules.stream_analysis.src import stream_analysis
 
 app = FastAPI()
 
@@ -20,19 +20,19 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         review_path = os.path.join(REVIEW_DIR, review_id)
 
         # Module 2: Ball Tracking
-        ball_data = run_ball_tracking(input_data.results)
+        ball_data = ball_tracking(input_data.results)
 
         # Module 3: Edge Detection
-        edge_result = run_edge_detection(ball_data)
+        edge_result = edge_detection(ball_data)
 
         # Module 4: Trajectory Analysis
-        trajectory_data = run_trajectory_analysis(edge_result)
+        trajectory_data = trajectory_analysis(edge_result)
 
         # Module 5: Decision Making
-        final_decision = run_decision_making(trajectory_data)
+        final_decision = decision_making(trajectory_data)
 
         # Module 6: Stream Analysis
-        result_video = run_stream_analysis(
+        result_video = stream_analysis(
             input_data.results, ball_data, final_decision
         )
 
