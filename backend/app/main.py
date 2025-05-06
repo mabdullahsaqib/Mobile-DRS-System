@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from uuid import uuid4
-import os, json, base64
+import os, json, base64, threading
 from core.InputModel import VideoAnalysisInput
 
 from modules.ball_tracking.service import run_ball_tracking
@@ -14,6 +14,43 @@ app = FastAPI()
 
 REVIEW_DIR = "app/reviews"
 
+# Background task for processing review
+def process_review(review_id: str, input_data: VideoAnalysisInput):
+    try:
+        review_path = os.path.join(REVIEW_DIR, review_id)
+
+        # Module 2: Ball Tracking
+        ball_data = run_ball_tracking(input_data.results)
+
+        # Module 3: Edge Detection
+        edge_result = run_edge_detection(ball_data)
+
+        # Module 4: Trajectory Analysis
+        trajectory_data = run_trajectory_analysis(edge_result)
+
+        # Module 5: Decision Making
+        final_decision = run_decision_making(trajectory_data)
+
+        # Module 6: Stream Analysis
+        result_video = run_stream_analysis(
+            input_data.results, ball_data, final_decision
+        )
+
+        # Save result video
+        video_path = os.path.join(review_path, "result.mp4")
+        with open(video_path, "wb") as vf:
+            vf.write(base64.b64decode(result_video))
+
+        # Save decision
+        with open(os.path.join(review_path, "result.json"), "w") as df:
+            json.dump({"decision": final_decision}, df)
+
+        print(f"[✓] Review {review_id} completed successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Processing failed for {review_id}: {e}")
+
+
 @app.post("/submit-review")
 async def submit_review(input_data: VideoAnalysisInput):
     try:
@@ -25,37 +62,8 @@ async def submit_review(input_data: VideoAnalysisInput):
         with open(os.path.join(review_path, "input.json"), "w") as f:
             f.write(input_data.json())
 
-        # Optionally, kick off processing here (sync version below)
-        try:
-            # Module 2: Ball Tracking
-            ball_data = run_ball_tracking(input_data.results)
-
-            # Module 3: Edge Detection
-            edge_result = run_edge_detection(ball_data)
-
-            # Module 4: Trajectory Analysis
-            trajectory_data = run_trajectory_analysis(edge_result)
-
-            # Module 5: Decision Making
-            final_decision = run_decision_making(trajectory_data)
-
-            # Module 6: Stream Analysis
-            result_video = run_stream_analysis(
-                input_data.results, ball_data, final_decision
-            )
-
-            # Save result video
-            video_path = os.path.join(review_path, "result.mp4")
-            with open(video_path, "wb") as vf:
-                vf.write(base64.b64decode(result_video))
-
-            # Save decision
-            with open(os.path.join(review_path, "result.json"), "w") as df:
-                json.dump({"decision": final_decision}, df)
-
-        except Exception as processing_error:
-            print(f"[ERROR] Processing failed for {review_id}: {processing_error}")
-            # Optionally log failure
+        # Start background processing
+        threading.Thread(target=process_review, args=(review_id, input_data)).start()
 
         return {"review_id": review_id}
 
