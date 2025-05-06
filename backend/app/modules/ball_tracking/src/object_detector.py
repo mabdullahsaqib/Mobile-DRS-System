@@ -146,15 +146,19 @@ class ObjectDetector:
                         "bbox": (new_x, new_y, new_w, new_h),
                         "confidence": float(weight)
                     })
-
         results["batsman"] = detections
          
-    
     def _detect_batsman_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
-     
-        frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+        """
+        Detect batsman using HOG+SVM person detector, with stricter filters.
+        Returns:
+            List of detections with bbox, confidence, z
+        """
+        confidence_thresh = max(0.75, self.confidence_threshold)
+        min_width, min_height = 40, 100
+        min_aspect_ratio = 1.5
 
-   
+        frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
         rects, weights = self.hog.detectMultiScale(
             frame_resized,
             winStride=(8, 8),
@@ -166,24 +170,37 @@ class ObjectDetector:
         frame_width = frame.shape[1]
 
         for (x, y, w, h), weight in zip(rects, weights):
-            if weight >= self.confidence_threshold:
-             
-                x, y, w, h = int(x * 2), int(y * 2), int(w * 2), int(h * 2)
-                center_x = x + w // 2
-                if 0.2 * frame_width < center_x < 0.8 * frame_width:
-                    shrink = 0.7
-                    new_w = int(w * shrink)
-                    new_h = int(h * shrink)
-                    new_x = x + (w - new_w) // 2
-                    new_y = y + (h - new_h) // 2
-                    z=(self.focal_length * self.real_batsman_height)/new_h
-                    detections.append({
-                        "bbox": [new_x, new_y, new_w, new_h],
-                        "confidence": float(weight),
-                        "z":round(z,2)
-                    })
+            if weight < confidence_thresh:
+                continue
 
-        return detections    
+            # Scale up to original image
+            x, y, w, h = int(x * 2), int(y * 2), int(w * 2), int(h * 2)
+            center_x = x + w // 2
+
+            if not (0.2 * frame_width < center_x < 0.8 * frame_width):
+                continue
+            if w < min_width or h < min_height:
+                continue
+            if h / float(w) < min_aspect_ratio:
+                continue
+
+            # Optional shrink to better localize torso
+            shrink = 0.7
+            new_w = int(w * shrink)
+            new_h = int(h * shrink)
+            new_x = x + (w - new_w) // 2
+            new_y = y + (h - new_h) // 2
+
+            z = (self.focal_length * self.real_batsman_height) / new_h
+
+            detections.append({
+                "bbox": [new_x, new_y, new_w, new_h],
+                "confidence": float(weight),
+                "z": round(z, 2)
+            })
+
+        return detections
+    
 
     # def _detect_ball_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
     #     """
@@ -236,7 +253,7 @@ class ObjectDetector:
         """
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
-        #creating masks
+        # Create masks for both red ranges and white
         mask_red1 = cv2.inRange(hsv, self.red_lower1, self.red_upper1)
         mask_red2 = cv2.inRange(hsv, self.red_lower2, self.red_upper2)
         mask_white = cv2.inRange(hsv, self.white_lower, self.white_upper)

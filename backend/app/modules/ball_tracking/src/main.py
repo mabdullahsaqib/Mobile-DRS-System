@@ -7,7 +7,9 @@ import argparse
 from frame_processor import FrameProcessor
 from object_detector import ObjectDetector
 from stump_detector import StumpDetector
-from ball_tracker import BallTracker  # <- NEW
+from ball_tracker import BallTracker
+from batsman_tracker import BatsmanTracker
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Ball and Object Tracker Module")
@@ -28,7 +30,8 @@ def main():
     processor = FrameProcessor(config.get('frame_processor', {}))
     detector = ObjectDetector(config.get('object_detector', {}))
     stump_detector = StumpDetector(config.get('stump_detector', {}))
-    ball_tracker = BallTracker(config.get('ball_tracker', {}))  # <- NEW
+    ball_tracker = BallTracker(config.get('ball_tracker', {}))
+    batsman_tracker = BatsmanTracker(focal_length=1500) 
 
     stump_detector.update_interval = 1
     cap = cv2.VideoCapture(args.input)
@@ -64,6 +67,9 @@ def main():
         trajectory_data = ball_tracker.track(processed_frame, detections, historical_positions)
         if trajectory_data:
             historical_positions.append(trajectory_data['current_position'])
+            
+        batsman_tracker.update(detections["batsman"], frame.shape, frame_id)
+
 
         # Ensure missing keys are filled
         detections.setdefault("ball", [])
@@ -82,7 +88,9 @@ def main():
                 "bat": detections["bat"],
                 "pads": detections["pads"]
             },
-            "ball_trajectory": trajectory_data if trajectory_data else {}
+            "ball_trajectory": trajectory_data if trajectory_data else {},
+            "batsman_position": batsman_tracker.get_position() or {}
+
         }
         all_outputs.append(output)
 
@@ -101,6 +109,7 @@ def main():
                 cv2.rectangle(processed_frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
                 cv2.putText(processed_frame, 'Batsman', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
+            
             cv2.imshow("Detections", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
