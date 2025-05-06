@@ -25,8 +25,8 @@ class TimeDuration {
 
   factory TimeDuration.fromDouble(double start, double end) {
     return TimeDuration(
-      startTime: Duration(milliseconds: (start * 1000.round()).toInt()),
-      endTime: Duration(milliseconds: (end * 1000.round()).toInt()),
+      startTime: Duration(milliseconds: (start * 1000).round()),
+      endTime: Duration(milliseconds: (end * 1000).round()),
     );
   }
 }
@@ -42,9 +42,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   String formatVideoDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "$twoDigitMinutes:$twoDigitSeconds";
+    return "${twoDigits(duration.inMinutes)}:${twoDigits(duration.inSeconds.remainder(60))}";
   }
 
   @override
@@ -57,137 +55,110 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Video Player')),
+      backgroundColor: const Color(0xFF0A3F24),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0A3F24),
+        elevation: 0,
+        title: const Text(
+          'Video Player',
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: Center(
         child: _controller.value.isInitialized
             ? Stack(
                 children: [
-                  isLandscape
-                      ? SizedBox.expand(
-                          child: FittedBox(
-                            fit: BoxFit.cover,
-                            child: SizedBox(
-                              width: _controller.value.size.width,
-                              height: _controller.value.size.height,
-                              child: VideoPlayer(_controller),
-                            ),
-                          ),
-                        )
-                      : SizedBox.expand(
-                          child: FittedBox(
-                            fit: BoxFit.contain, // Or BoxFit.contain
-                            child: SizedBox(
-                              width: _controller.value.size.height,
-                              height: _controller.value.size.width,
-                              child: VideoPlayer(_controller),
-                            ),
-                          ),
-                        ),
+                  Center(
+                    child: AspectRatio(
+                      aspectRatio: _controller.value.aspectRatio,
+                      child: VideoPlayer(_controller),
+                    ),
+                  ),
                   Column(
                     mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      // Time indicator
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, bottom: 6),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "${formatVideoDuration(_controller.value.position)} / ${formatVideoDuration(_controller.value.duration)}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Progress Bar with highlights
+                      Stack(
                         children: [
-                          const SizedBox(width: 20),
-                          Text(
-                              textAlign: TextAlign.left,
-                              "${formatVideoDuration(_controller.value.position)} / ${formatVideoDuration(_controller.value.duration)}",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                              )),
+                          SizedBox(
+                            height: 15,
+                            child: VideoProgressIndicator(
+                              _controller,
+                              allowScrubbing: true,
+                              colors: const VideoProgressColors(
+                                playedColor: Colors.greenAccent,
+                                bufferedColor: Colors.white30,
+                                backgroundColor: Colors.white10,
+                              ),
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final total = _controller.value.duration.inMilliseconds;
+                                return Stack(
+                                  children: timeDurations.map((t) {
+                                    final start = t.startTime.inMilliseconds / total;
+                                    final end = t.endTime.inMilliseconds / total;
+                                    return Positioned(
+                                      left: constraints.maxWidth * start,
+                                      width: constraints.maxWidth * (end - start),
+                                      top: 2,
+                                      height: 10,
+                                      child: Container(
+                                        color: Colors.yellow,
+                                      ),
+                                    );
+                                  }).toList(),
+                                );
+                              },
+                            ),
+                          ),
                         ],
                       ),
-                      Stack(children: [
-                        IgnorePointer(
-                          child: SizedBox(
-                            height: 15,
-                            child: VideoProgressIndicator(
-                              colors: const VideoProgressColors(
-                                  playedColor: Colors.orange),
-                              _controller,
-                              allowScrubbing: true,
-                            ),
-                          ),
-                        ),
-                        // Custom duration highlight boxes
-                        Positioned.fill(
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final totalDuration =
-                                  _controller.value.duration.inMilliseconds;
 
-                              return Stack(
-                                children: timeDurations.map((duration) {
-                                  final startFraction =
-                                      duration.startTime.inMilliseconds /
-                                          totalDuration;
-                                  final endFraction =
-                                      duration.endTime.inMilliseconds /
-                                          totalDuration;
-                                  final left =
-                                      constraints.maxWidth * startFraction;
-                                  final width = constraints.maxWidth *
-                                      (endFraction - startFraction);
-                                  final height =
-                                      50.0; // Set the desired height here
-
-                                  return Positioned(
-                                    left: left,
-                                    top: 5, // Center the block vertically
-                                    bottom: 0,
-                                    width: width,
-                                    child: Container(
-                                      color: Colors.yellow,
-                                      height:
-                                          height, // Specify the height of the block here
-                                    ),
-                                  );
-                                }).toList(),
-                              );
-                            },
-                          ),
-                        ),
-
-                        Opacity(
-                          opacity: 0.1,
-                          child: SizedBox(
-                            height: 15,
-                            child: VideoProgressIndicator(
-                              colors: const VideoProgressColors(
-                                  playedColor: Colors.black),
-                              _controller,
-                              allowScrubbing: true,
-                            ),
-                          ),
-                        ),
-                      ]),
                       const SizedBox(height: 10),
+
+                      // Playback controls
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           IconButton(
                             onPressed: () {
-                              _controller.seekTo(Duration(
-                                  seconds:
-                                      _controller.value.position.inSeconds -
-                                          1));
+                              final newPos = _controller.value.position - const Duration(seconds: 1);
+                              _controller.seekTo(newPos < Duration.zero ? Duration.zero : newPos);
                             },
-                            icon: const Icon(Icons.arrow_back),
+                            icon: const Icon(Icons.replay_10),
                             color: Colors.white,
                           ),
-                          const SizedBox(width: 10),
                           IconButton(
                             icon: Icon(
-                              _controller.value.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
+                              _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
                               color: Colors.white,
                             ),
                             onPressed: () {
@@ -198,25 +169,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               });
                             },
                           ),
-                          const SizedBox(width: 10),
                           IconButton(
                             onPressed: () {
-                              _controller.seekTo(Duration(
-                                  seconds:
-                                      _controller.value.position.inSeconds +
-                                          1));
+                              final max = _controller.value.duration;
+                              final newPos = _controller.value.position + const Duration(seconds: 1);
+                              _controller.seekTo(newPos > max ? max : newPos);
                             },
-                            icon: const Icon(Icons.arrow_forward),
+                            icon: const Icon(Icons.forward_10),
                             color: Colors.white,
-                          )
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 16),
+
+                      // Done button
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          "Done",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ],
               )
-            : const CircularProgressIndicator(),
+            : const CircularProgressIndicator(color: Colors.white),
       ),
     );
   }
