@@ -5,7 +5,6 @@ import 'package:mobile_drs_system/screens/video_recording_screen.dart';
 import 'package:mobile_drs_system/screens/video_player_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart';
-import 'package:mobile_drs_system/screens/splash_screen.dart';
 
 
 class AppRoutes {
@@ -19,7 +18,6 @@ class AppRoutes {
   static const String videoFormat = '/video-format';
 
   static final Map<String, WidgetBuilder> routes = {
-    splash: (context) => const SplashScreen(),
     home: (context) => const HomeScreen(),
     master: (context) => const MasterScreen(),
     videoRecording: (context) => const VideoRecordingScreen(),
