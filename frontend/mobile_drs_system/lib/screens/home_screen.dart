@@ -30,7 +30,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void pickVideosFromStorage() {
     FlutterMediaStore().pickFile(
       multipleSelect: false,
-      // mimeType: "video/mp4",
       onFilesPicked: (List<String> uris) {
         if (uris.isNotEmpty) {
           final file = File(uris.first);
@@ -49,49 +48,92 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget buildReviewCard(String title) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1D1B),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.sports_cricket, size: 32, color: Colors.white),
+          const SizedBox(width: 16),
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A3F24),
-      appBar: AppBar(
-        title: const Text("Review Center"),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Center(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.play_circle_fill),
-                label: const Text("START NEW REVIEW"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.tealAccent.shade700,
-                  foregroundColor: Colors.white,
-                  textStyle: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  // Image.asset("assets/cricket_ball.png", width: 32), // replace with your icon
+                  const SizedBox(width: 12),
+                  const Text(
+                    "DRS Umpire",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // Start Review Button
+              Center(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.arrow_forward),
+                  label: const Text("START NEW REVIEW"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF36B37E),
+                    foregroundColor: Colors.white,
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: startNewReview,
                 ),
-                onPressed: startNewReview,
               ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.folder_open),
-              label: const Text("OPEN SAVED VIDEO"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white10,
-                foregroundColor: Colors.white,
-                textStyle: const TextStyle(fontSize: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+
+              const SizedBox(height: 32),
+
+              const Text(
+                "Recent Reviews",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              onPressed: pickVideosFromStorage,
-            ),
-          ],
+              const SizedBox(height: 16),
+
+              // Recent Review Items
+              buildReviewCard("Review 1"),
+              buildReviewCard("Review 2"),
+            ],
+          ),
         ),
       ),
     );
