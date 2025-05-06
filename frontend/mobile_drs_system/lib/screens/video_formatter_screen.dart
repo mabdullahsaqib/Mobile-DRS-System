@@ -123,15 +123,16 @@ void _startPolling() {
       // Simulate done response
       pollingTimer?.cancel();
       if (mounted) {
-        Navigator.pushReplacement(
+       Navigator.pushReplacement(
   context,
   MaterialPageRoute(
     builder: (_) => DecisionScreen(data: {
-      "video_url": "http://localhost:8000/reviews/abc123/augmented.mp4",
-      "decision": "OUT"
+      "video_base64": null, //augmentedBase64Frames, // List<String> of base64 frames (data:image/jpeg;base64,...)
+      "decision": "OUT", // or "NOT OUT", etc.
     }),
   ),
 );
+
 
       }
     } catch (e) {
