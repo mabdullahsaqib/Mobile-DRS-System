@@ -10,10 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: frontend/mobile-drs-system
-
     steps:
       - uses: actions/checkout@v4
 
