@@ -2,9 +2,9 @@ name: Dart (Flutter Build)
 
 on:
   push:
-    branches: [ "Staging-branch" ]
+    branches: [ "Production-branch" ]
   pull_request:
-    branches: [ "Staging-branch" ]
+    branches: [ "Production-branch" ]
 
 jobs:
   build:
