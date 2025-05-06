@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 class ProcessingScreen extends StatefulWidget {
   final String reviewId;
@@ -20,31 +18,33 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     _startPolling();
   }
 
-  void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
-      try {
-        final response = await http.get(
-          Uri.parse('http://10.0.2.2:8000/get-review/${widget.reviewId}'),
-        );
+void _startPolling() {
+  // _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+  //   try {
+  //     final response = await http.get(
+  //       Uri.parse('http://10.0.2.2:8000/get-review/${widget.reviewId}'),
+  //     );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data = jsonDecode(response.body);
-          if (data['status'] == 'done') {
-            _pollingTimer?.cancel();
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> data = jsonDecode(response.body);
+  //       if (data['status'] == 'done') {
+  //         _pollingTimer?.cancel();
 
-            // Navigate to Decision Screen with result data
-            Navigator.pushReplacementNamed(
-              context,
-              '/decision',
-              arguments: data,
-            );
-          }
-        }
-      } catch (e) {
-        print('Polling error: $e');
-      }
-    });
-  }
+  //         Navigator.pushReplacementNamed(
+  //           context,
+  //           '/decision',
+  //           arguments: data,
+  //         );
+  //       }
+  //     }
+  //   } catch (e) {
+  //     print('Polling error: $e');
+  //   }
+  // });
+
+  print('Mock polling started for reviewId: ${widget.reviewId}');
+}
+
 
   @override
   void dispose() {
