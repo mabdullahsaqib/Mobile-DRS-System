@@ -1,44 +1,110 @@
-  [
-    {
-      "frame_id": 0,
-      "timestamp": 0.00,
-      "detections": {
-        "ball": [
-          { "center3d": [1100.0, 300.0, 10.0], "radius": 15 }
-        ],
-        "stumps": [
-          { "top3d": [1050.0, 400.0, 0.0], "bottom3d": [1050.0, 500.0, -0.71] },
-          { "top3d": [1065.0, 400.0, 0.0], "bottom3d": [1065.0, 500.0, -0.71] },
-          { "top3d": [1080.0, 400.0, 0.0], "bottom3d": [1080.0, 500.0, -0.71] }
-        ]
-      }
-    },
-    {
-      "frame_id": 1,
-      "timestamp": 0.05,
-      "detections": {
-        "ball": [
-          { "center3d": [1095.0, 290.0, 9.5], "radius": 15 }
-        ],
-        "stumps": [
-          { "top3d": [1050.0, 400.0, 0.0], "bottom3d": [1050.0, 500.0, -0.71] },
-          { "top3d": [1065.0, 400.0, 0.0], "bottom3d": [1065.0, 500.0, -0.71] },
-          { "top3d": [1080.0, 400.0, 0.0], "bottom3d": [1080.0, 500.0, -0.71] }
-        ]
-      }
-    },
-    {
-      "frame_id": 2,
-      "timestamp": 0.10,
-      "detections": {
-        "ball": [
-          { "center3d": [1090.0, 310.0, 9.0], "radius": 15 }
-        ],
-        "stumps": [
-          { "top3d": [1050.0, 400.0, 0.0], "bottom3d": [1050.0, 500.0, -0.71] },
-          { "top3d": [1065.0, 400.0, 0.0], "bottom3d": [1065.0, 500.0, -0.71] },
-          { "top3d": [1080.0, 400.0, 0.0], "bottom3d": [1080.0, 500.0, -0.71] }
-        ]
-      }
+[
+  {
+    "frame_id": 0,
+    "timestamp": 0.00,
+    "detections": {
+      "ball": [
+        { "center": [1100, 200], "radius": 14, "z": 8.0 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
     }
-  ]
+  },
+  {
+    "frame_id": 1,
+    "timestamp": 0.04,
+    "detections": {
+      "ball": [
+        { "center": [1095, 210], "radius": 14, "z": 8.5 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
+    }
+  },
+  {
+    "frame_id": 2,
+    "timestamp": 0.08,
+    "detections": {
+      "ball": [
+        { "center": [1090, 220], "radius": 14, "z": 9.0 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
+    }
+  },
+  {
+    "frame_id": 3,
+    "timestamp": 0.12,
+    "detections": {
+      "ball": [
+        { "center": [1085, 215], "radius": 14, "z": 9.5 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
+    }
+  },
+  {
+    "frame_id": 4,
+    "timestamp": 0.16,
+    "detections": {
+      "ball": [
+        { "center": [1080, 210], "radius": 14, "z": 10.0 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
+    }
+  },
+  {
+    "frame_id": 5,
+    "timestamp": 0.20,
+    "detections": {
+      "ball": [
+        { "center": [1075, 205], "radius": 14, "z": 10.5 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
+    }
+  },
+  {
+    "frame_id": 6,
+    "timestamp": 0.24,
+    "detections": {
+      "ball": [
+        { "center": [1070, 200], "radius": 14, "z": 10.0 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
+    }
+  },
+  {
+    "frame_id": 7,
+    "timestamp": 0.28,
+    "detections": {
+      "ball": [
+        { "center": [1065, 195], "radius": 14, "z": 9.5 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
+    }
+  },
+  {
+    "frame_id": 8,
+    "timestamp": 0.32,
+    "detections": {
+      "ball": [
+        { "center": [1060, 190], "radius": 14, "z": 9.0 }
+      ],
+      "stumps": [
+        { "bbox": [1000, 400, 80, 250], "confidence": 1.0 }
+      ]
+    }
+  }
+]
