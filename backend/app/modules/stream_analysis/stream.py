@@ -95,6 +95,26 @@ class StreamOverlay:
         """Reset frame counter for a new sequence"""
         self.frame_count = 0
 
+    def _generate_realistic_ball_path(self, num_frames):
+        """
+        Generate a realistic cricket ball path for a good length delivery
+        Args:
+            num_frames: Length of trajectory in frames
+        Returns:
+            List of [x, y, z] positions simulating a ball path with bounce and slight swing
+        """
+        # Pitch length: 20m (1280 pixels), bowler at x=200, stumps at x=1000
+        x = np.linspace(200, 1000, num_frames)  # Linear movement along x-axis
+        # y starts at 300 (mid-height), dips to 400 at bounce, rises slightly
+        y = 300 + 100 * np.sin((x - 200) / 800 * np.pi)  # Slight vertical oscillation
+        # z starts at 2m (200 pixels), drops to 0 at bounce (around 6-8m or x=680-760), slight lift
+        z = 200 - 200 * np.exp(-((x - 600) ** 2) / 20000) + 20 * np.sin((x - 600) / 400 * np.pi)
+        # Add slight swing toward off-stump (right) after bounce
+        swing_factor = np.where(x > 700, 20 * np.tan((x - 700) / 300 * np.pi / 4), 0)
+        x = x + swing_factor
+
+        return [[int(x[i]), int(y[i]), int(z[i])] for i in range(num_frames)]
+
 def main():
     """Entry point for standalone testing with mock data"""
     try:
@@ -102,9 +122,9 @@ def main():
 
         # Mock data for testing
         num_frames = 100
-        # Simulate ball positions (x, y, z) moving across the pitch
-        ball_positions = [[200 + i*8, 500 - 0.002 * (200 + i*8 - 600)**2, 100 - i] for i in range(num_frames)]
-        decision_data = {"decision": "OUT", "pitching_zone": "OUTSIDE_OFF"}
+        # Use realistic ball path
+        ball_positions = processor._generate_realistic_ball_path(num_frames)
+        decision_data = {"decision": "OUT", "pitching_zone": "GOOD"}
 
         # Load a sample frame for testing (replace with real frame input in production)
         frame = cv2.imread("input/straight_view.jpg")
