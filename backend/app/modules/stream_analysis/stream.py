@@ -13,82 +13,45 @@ from pathlib import Path
 
 class StreamOverlay:
     def __init__(self):
-        """Initialize the overlay generator with output directories and background image"""
+        """Initialize the overlay generator with output directories"""
         # Set up output directory structure
         self.output_dir = Path("output/augmented_frames")
         self.output_dir.mkdir(exist_ok=True, parents=True)  # Create if doesn't exist
         
-        # Load and preprocess background image
-        self.background = cv2.imread("input/straight_view.jpg")
-        if self.background is None:
-            raise FileNotFoundError("Required background image not found at input/straight_view.jpg")
-        
-        # Standardize to HD resolution (1280x720) for broadcast compatibility
-        self.background = cv2.resize(self.background, (1280, 720))
+        # Frame counter for naming
+        self.frame_count = 0
 
-    def generate_test_frames(self, num_frames=100):
-        """
-        Generate synthetic test frames when real data is unavailable
-        Args:
-            num_frames: Number of frames to generate (default 100 = 3.3sec @30FPS)
-        """
-        # Synthetic ball trajectory data (parabolic path)
-        module2_data = {
-            "ball_positions": self._generate_ball_path(num_frames),
-            "bounce_point": {"x": 800, "y": 400},  # 60% down pitch
-            "impact_point": {"x": 900, "y": 350}   # Near stumps
-        }
-        
-        # Mock decision data
-        module5_data = {
-            "decision": "OUT",  # or "NOT OUT"
-            "pitching_zone": "OUTSIDE_OFF"  # "LINE"/"LEG"
-        }
-
-        # Generate each frame
-        for frame_id in range(num_frames):
-            self.process_frame(
-                ball_positions=module2_data["ball_positions"][:frame_id+1],
-                bounce_point=module2_data["bounce_point"],
-                impact_point=module2_data["impact_point"],
-                decision_data=module5_data,
-                frame_id=frame_id,
-                total_frames=num_frames
-            )
-
-    def _generate_ball_path(self, num_frames):
-        """
-        Generate realistic cricket ball trajectory
-        Args:
-            num_frames: Length of trajectory in frames
-        Returns:
-            List of [x,y] positions forming a parabolic path
-        """
-        x = np.linspace(200, 1000, num_frames)  # From bowler (left) to stumps (right)
-        y = 500 - 0.002 * (x - 600)**2  # Physics-based parabola
-        return [[int(x[i]), int(y[i])] for i in range(num_frames)]
-
-    def process_frame(self, ball_positions, bounce_point, impact_point, decision_data, frame_id, total_frames):
+    def process_frame(self, frame, ball_positions, decision_data, total_frames):
         """
         Process a single frame with all visual overlays
         Args:
-            ball_positions: List of historical [x,y] ball positions
-            bounce_point: Dict with 'x','y' bounce coordinates
-            impact_point: Dict with 'x','y' impact coordinates
-            decision_data: Contains 'decision' and 'pitching_zone'
-            frame_id: Current frame number (0-indexed)
-            total_frames: Total frames in sequence
+            frame: Current video frame from Module 1 (numpy array)
+            ball_positions: List of [x, y, z] ball positions from Module 2
+            decision_data: Contains 'decision' and 'pitching_zone' from Module 5
+            total_frames: Total frames in sequence for decision timing
         """
-        frame = self.background.copy()
-        
+        # Standardize frame to HD resolution (1280x720) for broadcast compatibility
+        frame = cv2.resize(frame, (1280, 720))
+
+        # Convert ball positions from (x, y, z) to 2D (x, y) for overlay
+        # For simplicity, we're ignoring z for now and using (x, y) directly
+        projected_positions = [[int(pos[0]), int(pos[1])] for pos in ball_positions]
+
+        # Detect bounce point (where z is closest to 0)
+        bounce_idx = np.argmin([pos[2] for pos in ball_positions])
+        bounce_point = {"x": int(ball_positions[bounce_idx][0]), "y": int(ball_positions[bounce_idx][1])}
+
+        # Impact point is the last position (near stumps)
+        impact_point = {"x": int(ball_positions[-1][0]), "y": int(ball_positions[-1][1])}
+
         # 1. TRAJECTORY LINE (Green)
-        if len(ball_positions) > 1:
-            for i in range(1, len(ball_positions)):
+        if len(projected_positions) > 1:
+            for i in range(1, len(projected_positions)):
                 cv2.line(frame, 
-                        tuple(ball_positions[i-1]), 
-                        tuple(ball_positions[i]), 
-                        (0, 255, 0),  # Green
-                        2, cv2.LINE_AA)  # Anti-aliased
+                         tuple(projected_positions[i-1]), 
+                         tuple(projected_positions[i]), 
+                         (0, 255, 0),  # Green
+                         2, cv2.LINE_AA)  # Anti-aliased
         
         # 2. BOUNCE MARKER (Yellow circle)
         cv2.circle(frame, 
@@ -105,12 +68,12 @@ class StreamOverlay:
                   2)  # Thickness
         
         # 4. DECISION OVERLAY (Last 20% frames only)
-        if frame_id > 0.8 * total_frames:
+        if self.frame_count > 0.8 * total_frames:
             # Black background box
             cv2.rectangle(frame, 
                          (1000, 20),  # Top-left
-                         (1200, 80),   # Bottom-right
-                         (0, 0, 0),    # Black
+                         (1200, 80),  # Bottom-right
+                         (0, 0, 0),  # Black
                          -1)  # Filled
             
             # Decision text (red=OUT, green=NOT OUT)
@@ -124,14 +87,35 @@ class StreamOverlay:
                        2)  # Thickness
         
         # Save frame with zero-padded filename (e.g., frame_0085.png)
-        output_path = self.output_dir / f"frame_{frame_id:04d}.png"
+        output_path = self.output_dir / f"frame_{self.frame_count:04d}.png"
         cv2.imwrite(str(output_path), frame)
+        self.frame_count += 1
+
+    def reset(self):
+        """Reset frame counter for a new sequence"""
+        self.frame_count = 0
 
 def main():
-    """Entry point for standalone testing"""
+    """Entry point for standalone testing with mock data"""
     try:
         processor = StreamOverlay()
-        processor.generate_test_frames(100)  # 100 frames = 3.3sec @30FPS
+
+        # Mock data for testing
+        num_frames = 100
+        # Simulate ball positions (x, y, z) moving across the pitch
+        ball_positions = [[200 + i*8, 500 - 0.002 * (200 + i*8 - 600)**2, 100 - i] for i in range(num_frames)]
+        decision_data = {"decision": "OUT", "pitching_zone": "OUTSIDE_OFF"}
+
+        # Load a sample frame for testing (replace with real frame input in production)
+        frame = cv2.imread("input/straight_view.jpg")
+        if frame is None:
+            raise FileNotFoundError("Required background image not found at input/straight_view.jpg")
+
+        # Process each frame
+        for _ in range(num_frames):
+            # In a real scenario, ball_positions would grow frame by frame
+            processor.process_frame(frame, ball_positions[:processor.frame_count + 1], decision_data, num_frames)
+
         print("Successfully generated 100 test frames in:")
         print(f"→ {processor.output_dir.resolve()}")
     except Exception as e:
