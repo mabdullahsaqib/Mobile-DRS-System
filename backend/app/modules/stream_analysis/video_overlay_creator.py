@@ -8,14 +8,14 @@ class StreamOverlay:
     def __init__(self, config: dict):
         self.config = config
         self.validate_config()  # ensure required configuration is provided
-                # load background image (front-view cricket pitch)
+                # load bg image (front-view cricket pitch)
         self.bg = cv2.imread(self.config['bg_image_path'])
         if self.bg is None:
             raise FileNotFoundError(f"Background not found at {self.config['bg_image_path']}")
         # get frame dimensions
         self.height, self.width = self.bg.shape[:2]
              
-        # create output directory if it doesn't exist
+        # create output directory 
         os.makedirs(self.config['output_frame_dir'], exist_ok=True)
 
     def validate_config(self):
@@ -30,14 +30,14 @@ class StreamOverlay:
                 raise ValueError(f"Missing config key: {key}")
 
     def draw_stumps(self, frame: np.ndarray) -> np.ndarray:
-             # draw 3 stumps at specified positions
+             # draw  stumps at specified positions
         for x, y in self.config['stumps_pos']:
             cv2.rectangle(frame, (x - 2, y), (x + 2, y + 40), (200, 180, 150), -1)
             cv2.rectangle(frame, (x - 8, y - 3), (x + 8, y), (255, 255, 255), -1)
         return frame
 
     def draw_batsman(self, frame: np.ndarray) -> np.ndarray:
-          # draw bat and batsman rectangle
+          # draw bat and batsman
         bat_x, bat_y = self.config['batsman_pos']
         bat_w, bat_h = self.config['bat_size']
         cv2.rectangle(frame, (bat_x, bat_y), (bat_x + bat_w, bat_y + bat_h), (50, 50, 50), -1)
@@ -76,7 +76,7 @@ class StreamOverlay:
         return frame
 
     def draw_decision(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
-             # display decision text (OUT/NOT OUT) from the decision frame onwards
+             # display decision text (OUT/NOT OUT) from the decision frame 
         if frame_id >= self.config['decision_frame']:
             decision_text = f"Decision: {self.config['decision']}"
             color = (0, 255, 0) if self.config['decision'] == "NOT OUT" else (0, 0, 255)
