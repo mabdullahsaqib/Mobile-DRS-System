@@ -6,6 +6,8 @@ import '../routes/app_routes.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:async';
 import 'package:mobile_drs_system/screens/decision_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 
 Future<void> DeleteVideo(String videoPath) async {
@@ -73,24 +75,24 @@ Future<void> handleRequestReview() async {
 
   try {
     // Simulated POST request
-    // final response = await http.post(
-    //   Uri.parse('http://10.0.2.2:8000/submit-review'),
-    //   headers: {'Content-Type': 'application/json'},
-    //   body: jsonEncode(result),
-    // ).timeout(const Duration(seconds: 10));
+    final response = await http.post(
+      Uri.parse('http://10.0.2.2:8000/submit-review'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(result),
+    ).timeout(const Duration(seconds: 10));
 
-    // if (response.statusCode == 200) {
-    //   final Map<String, dynamic> data = jsonDecode(response.body);
-    //   reviewId = data['review_id'];
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      reviewId = data['review_id'];
 
-    reviewId = 'test-id'; // Use dummy reviewId for testing
+    // reviewId = 'test-id'; // Use dummy reviewId for testing
 
     await DeleteVideo(widget.mainVideoPath);
     _startPolling();
 
-    // } else {
-    //   throw Exception('Server error ${response.statusCode}');
-    // }
+    } else {
+      throw Exception('Server error ${response.statusCode}');
+    }
   } catch (e) {
     setState(() {
       errorOccurred = true;
@@ -102,39 +104,42 @@ Future<void> handleRequestReview() async {
 void _startPolling() {
   pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
     try {
-      // final response = await http.get(
-      //   Uri.parse('http://10.0.2.2:8000/get-review/$reviewId'),
-      // );
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:8000/get-review/$reviewId'),
+      );
 
-      // if (response.statusCode == 200) {
-      //   final Map<String, dynamic> data = jsonDecode(response.body);
-      //   if (data['status'] == 'done') {
-      //     pollingTimer?.cancel();
-      //     if (mounted) {
-      //       Navigator.pushReplacementNamed(
-      //         context,
-      //         '/decision',
-      //         arguments: data,
-      //       );
-      //     }
-      //   }
-      // }
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        if (data['status'] == 'complete') {
+          pollingTimer?.cancel();
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DecisionScreen(data: {
+                  "video_base64": data['video'], //augmentedBase64Frames, // List<String> of base64 frames (data:image/jpeg;base64,...)
+                  "decision": data['decision'], // or "NOT OUT", etc.
+                }),
+              ),
+            );
+          }
+        }
+      }
 
       // Simulate done response
-      pollingTimer?.cancel();
-      if (mounted) {
-       Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(
-    builder: (_) => DecisionScreen(data: {
-      "video_base64": null, //augmentedBase64Frames, // List<String> of base64 frames (data:image/jpeg;base64,...)
-      "decision": "OUT", // or "NOT OUT", etc.
-    }),
-  ),
-);
+//       pollingTimer?.cancel();
+//       if (mounted) {
+//        Navigator.pushReplacement(
+//   context,
+//   MaterialPageRoute(
+//     builder: (_) => DecisionScreen(data: {
+//       "video_base64": null, //augmentedBase64Frames, // List<String> of base64 frames (data:image/jpeg;base64,...)
+//       "decision": "OUT", // or "NOT OUT", etc.
+//     }),
+//   ),
+// );
+//     }
 
-
-      }
     } catch (e) {
       print('Polling error: $e');
     }

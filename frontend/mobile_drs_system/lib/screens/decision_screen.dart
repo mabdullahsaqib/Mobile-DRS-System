@@ -16,7 +16,7 @@ class DecisionScreen extends StatefulWidget {
 
 class _DecisionScreenState extends State<DecisionScreen> {
   String? _tempVideoPath;
-  bool _isSaving = false;
+  final bool _isSaving = false;
   late VideoPlayerController _previewController;
   bool _isPreviewReady = false;
 

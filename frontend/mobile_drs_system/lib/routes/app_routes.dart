@@ -1,5 +1,4 @@
 import 'package:mobile_drs_system/screens/home_screen.dart';
-import 'package:mobile_drs_system/screens/master_screen.dart';
 import 'package:mobile_drs_system/screens/video_formatter_screen.dart';
 import 'package:mobile_drs_system/screens/video_recording_screen.dart';
 import 'package:mobile_drs_system/screens/video_player_screen.dart';
@@ -19,7 +18,6 @@ class AppRoutes {
 
   static final Map<String, WidgetBuilder> routes = {
     home: (context) => const HomeScreen(),
-    master: (context) => const MasterScreen(),
     videoRecording: (context) => const VideoRecordingScreen(),
   };
 
