@@ -7,19 +7,19 @@ from tqdm import tqdm
 class StreamOverlay:
     def __init__(self, config: dict):
         self.config = config
-        self.validate_config()  # Ensure required configuration is provided
-                # Load background image (front-view cricket pitch)
+        self.validate_config()  # ensure required configuration is provided
+                # load bg image (front-view cricket pitch)
         self.bg = cv2.imread(self.config['bg_image_path'])
         if self.bg is None:
             raise FileNotFoundError(f"Background not found at {self.config['bg_image_path']}")
-        # Get frame dimensions
+        # get frame dimensions
         self.height, self.width = self.bg.shape[:2]
              
-        # Create output directory if it doesn't exist
+        # create output directory 
         os.makedirs(self.config['output_frame_dir'], exist_ok=True)
 
     def validate_config(self):
-         # Ensure all required configuration keys are present
+         # ensure all required configuration keys are present
         required_keys = [
             'output_frame_dir', 'bg_image_path', 'fps',
             'ball_trajectory', 'batsman_pos', 'bat_size', 'stumps_pos',
@@ -30,14 +30,14 @@ class StreamOverlay:
                 raise ValueError(f"Missing config key: {key}")
 
     def draw_stumps(self, frame: np.ndarray) -> np.ndarray:
-             # Draw 3 stumps at specified positions
+             # draw  stumps at specified positions
         for x, y in self.config['stumps_pos']:
             cv2.rectangle(frame, (x - 2, y), (x + 2, y + 40), (200, 180, 150), -1)
             cv2.rectangle(frame, (x - 8, y - 3), (x + 8, y), (255, 255, 255), -1)
         return frame
 
     def draw_batsman(self, frame: np.ndarray) -> np.ndarray:
-          # Draw bat and batsman rectangle
+          # draw bat and batsman
         bat_x, bat_y = self.config['batsman_pos']
         bat_w, bat_h = self.config['bat_size']
         cv2.rectangle(frame, (bat_x, bat_y), (bat_x + bat_w, bat_y + bat_h), (50, 50, 50), -1)
@@ -45,13 +45,13 @@ class StreamOverlay:
         return frame
 
     def draw_ball(self, frame: np.ndarray, position: Tuple[int, int]) -> np.ndarray:
-          # Draw red ball at given position
+          # draw red ball at given position
         cv2.circle(frame, position, 6, (0, 0, 255), -1)
         return frame
 
     def draw_impact_marker(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
         nt) -> np.ndarray:
-        # Draw impact circle and label if it's the impact frame
+        # draw impact circle and label if it's the impact frame
         if 'impact_frame' in self.config and frame_id == self.config['impact_frame']:
             if 'impact_pos' in self.config:
                 pos = self.config['impact_pos']
@@ -62,7 +62,7 @@ class StreamOverlay:
         return frame
 
     def draw_predicted_path(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
-            # Draw predicted ball trajectory after impact
+            # draw predicted ball trajectory after impact
         if 'predicted_path' in self.config and frame_id >= self.config.get('impact_frame', 0):
             for i in range(len(self.config['predicted_path']) - 1):
                 if i % 2 == 0:
@@ -76,7 +76,7 @@ class StreamOverlay:
         return frame
 
     def draw_decision(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
-             # Display decision text (OUT/NOT OUT) from the decision frame onwards
+             # display decision text (OUT/NOT OUT) from the decision frame 
         if frame_id >= self.config['decision_frame']:
             decision_text = f"Decision: {self.config['decision']}"
             color = (0, 255, 0) if self.config['decision'] == "NOT OUT" else (0, 0, 255)
@@ -89,7 +89,7 @@ class StreamOverlay:
         return frame
 
     def draw_ultraedge(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
-         # Show UltraEdge waveform for frames within a certain range
+         # show UltraEdge waveform for frames within a certain range
         if not self.config.get('edge_detected', False):
             return frame
         start = self.config.get('ultraedge_start_frame', 45)
@@ -99,7 +99,7 @@ class StreamOverlay:
             cv2.line(frame, (self.width - 250, 150), (self.width - 50, 150), (255, 255, 255), 1)
             for x in range(0, 200, 5):
                 
-                # Simulate spike in center
+                # simulate spike in center
                 height = np.random.randint(30, 50) if 90 < x < 110 else np.random.randint(5, 15)
                 pt1 = (self.width - 250 + x, 150)
                 pt2 = (self.width - 250 + x, 150 - height)
@@ -108,7 +108,7 @@ class StreamOverlay:
         return frame
 
     def generate_frames(self) -> List[str]:
-         # Generate each video frame with overlays
+         # generate each video frame with overlays
         frame_paths = []
         num_frames = len(self.config['ball_trajectory'])
         for frame_id in tqdm(range(num_frames), desc="Generating frames"):
@@ -128,7 +128,7 @@ class StreamOverlay:
         return frame_paths
 
     def create_video(self):
-            # Combine frames into a video
+            # combine frames into a video
         frames = sorted([f for f in os.listdir(self.config['output_frame_dir']) if f.endswith(".png")])
         if not frames:
             raise Exception("No frames found.")
@@ -146,7 +146,7 @@ class StreamOverlay:
 
 
 if __name__ == "__main__":
-     # Sample dummy input to test the overlay functionality
+     # dummy input to test the overlay functionality
     sample_config = {
         'output_frame_dir': "output/augmented_frames",
         'output_video_path': "output/overlay_video.mp4",
