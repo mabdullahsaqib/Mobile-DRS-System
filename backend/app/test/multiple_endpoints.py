@@ -4,7 +4,7 @@ from uuid import uuid4
 import os, json, base64, threading
 from core.InputModel import VideoAnalysisInput
 
-from modules.ball_tracking.dummy import ball_tracking_dummy
+from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
 # from modules.edge_detection.src import edge_detection
 # from modules.trajectory_analysis.src import trajectory_analysis
 # from modules.decision_making.src import decision_making

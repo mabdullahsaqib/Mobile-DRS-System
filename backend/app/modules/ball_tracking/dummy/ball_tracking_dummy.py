@@ -1,6 +1,6 @@
 import random
 
-def generate_dummy_module2_output(duration_sec=15, fps=30):
+def ball_tracking_dummy(duration_sec=15, fps=30):
     num_frames = int(duration_sec * fps)
     output = []
 
