@@ -1,7 +1,7 @@
 {
   "object_detector": {
     "detection_method": "traditional",
-    "confidence_threshold": 0.5,
+    "confidence_threshold": 0.75,
     "focal_length_pixels": 1500
   },
   "frame_processor": {
