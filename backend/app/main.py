@@ -5,10 +5,10 @@ import os, json, base64, threading
 from core.InputModel import VideoAnalysisInput
 
 from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
-# from modules.edge_detection.src import edge_detection
+from modules.edge_detection.router import edge_detection
 # from modules.trajectory_analysis.src import trajectory_analysis
 from modules.decision_making.FinalDecision import final_decision
-# from modules.stream_analysis.src import stream_analysis
+from modules.stream_analysis.stream_analysis import augmented_stream
 
 app = FastAPI()
 
@@ -23,8 +23,8 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         # Module 2: Ball Tracking
         ball_data = ball_tracking_dummy(duration_sec=15, fps=30)
 
-        # # Module 3: Edge Detection
-        # edge_result = edge_detection(ball_data)
+        # Module 3: Edge Detection
+        edge_result = edge_detection(ball_data)
 
         # # Module 4: Trajectory Analysis
         # trajectory_data = trajectory_analysis(edge_result)
@@ -33,29 +33,29 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         # final_decision = decision_making(trajectory_data)
 
         # # Module 6: Stream Analysis
-        # result_video = stream_analysis(
-        #     input_data.results, ball_data, final_decision
-        # )
+        result_video = augmented_stream(
+            input_data.results, ball_data, final_decision
+        )
+
+        # Save result video
+        video_path = os.path.join(review_path, "video.txt")
+        with open(video_path, "wb") as vf:
+            vf.write(result_video)
+
+        # # Save decision
+        # with open(os.path.join(review_path, "decision.json"), "w") as df:
+        #     json.dump({"decision": final_decision}, df)
+
+        print(f"Review {review_id} completed successfully")
 
         # Save result video
         # video_path = os.path.join(review_path, "result.mp4")
+        # dummy_video_data = base64.b64encode(b"dummy_video_content").decode("utf-8")
         # with open(video_path, "wb") as vf:
-        #     vf.write(base64.b64decode(result_video))
-
-        # # Save decision
-        # with open(os.path.join(review_path, "result.json"), "w") as df:
-        #     json.dump({"decision": final_decision}, df)
-
-        # print(f"[✓] Review {review_id} completed successfully")
-
-        # Save result video
-        video_path = os.path.join(review_path, "result.mp4")
-        dummy_video_data = base64.b64encode(b"dummy_video_content").decode("utf-8")
-        with open(video_path, "wb") as vf:
-            vf.write(base64.b64decode(dummy_video_data))
+        #     vf.write(base64.b64decode(dummy_video_data))
 
         # Save decision
-        with open(os.path.join(review_path, "result.json"), "w") as df:
+        with open(os.path.join(review_path, "decision.json"), "w") as df:
             json.dump({"decision": "dummy_decision"}, df)
 
         print(f"[DEBUG] Output video base64 preview: {ball_data[:100]}...")
@@ -88,8 +88,8 @@ async def submit_review(input_data: VideoAnalysisInput):
 async def get_review_result(review_id: str):
     try:
         review_path = os.path.join(REVIEW_DIR, review_id)
-        result_file = os.path.join(review_path, "result.json")
-        video_file = os.path.join(review_path, "result.mp4")
+        result_file = os.path.join(review_path, "decision.json")
+        video_file = os.path.join(review_path, "video.txt")
 
         if not os.path.exists(result_file):
             return {"status": "processing"}
