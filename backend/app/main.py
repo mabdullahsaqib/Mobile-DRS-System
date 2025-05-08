@@ -4,48 +4,61 @@ from uuid import uuid4
 import os, json, base64, threading
 from core.InputModel import VideoAnalysisInput
 
-from modules.ball_tracking.dummy import ball_tracking_dummy
-from modules.edge_detection.src import edge_detection
-from modules.trajectory_analysis.src import trajectory_analysis
-from modules.decision_making.src import decision_making
-from modules.stream_analysis.src import stream_analysis
+from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
+# from modules.edge_detection.src import edge_detection
+# from modules.trajectory_analysis.src import trajectory_analysis
+from modules.decision_making.FinalDecision import final_decision
+# from modules.stream_analysis.src import stream_analysis
 
 app = FastAPI()
 
-REVIEW_DIR = "app/reviews"
+REVIEW_DIR = "reviews/"
+os.makedirs(REVIEW_DIR, exist_ok=True)  # Ensure reviews directory exists
 
 # Background task for processing review
 def process_review(review_id: str, input_data: VideoAnalysisInput):
     try:
-        review_path = os.path.join(REVIEW_DIR, review_id)
+        review_path = os.path.join(REVIEW_DIR, review_id + "/")
 
         # Module 2: Ball Tracking
-        ball_data = ball_tracking_dummy(input_data.results)
+        ball_data = ball_tracking_dummy(duration_sec=15, fps=30)
 
-        # Module 3: Edge Detection
-        edge_result = edge_detection(ball_data)
+        # # Module 3: Edge Detection
+        # edge_result = edge_detection(ball_data)
 
-        # Module 4: Trajectory Analysis
-        trajectory_data = trajectory_analysis(edge_result)
+        # # Module 4: Trajectory Analysis
+        # trajectory_data = trajectory_analysis(edge_result)
 
-        # Module 5: Decision Making
-        final_decision = decision_making(trajectory_data)
+        # # Module 5: Decision Making
+        # final_decision = decision_making(trajectory_data)
 
-        # Module 6: Stream Analysis
-        result_video = stream_analysis(
-            input_data.results, ball_data, final_decision
-        )
+        # # Module 6: Stream Analysis
+        # result_video = stream_analysis(
+        #     input_data.results, ball_data, final_decision
+        # )
+
+        # Save result video
+        # video_path = os.path.join(review_path, "result.mp4")
+        # with open(video_path, "wb") as vf:
+        #     vf.write(base64.b64decode(result_video))
+
+        # # Save decision
+        # with open(os.path.join(review_path, "result.json"), "w") as df:
+        #     json.dump({"decision": final_decision}, df)
+
+        # print(f"[✓] Review {review_id} completed successfully")
 
         # Save result video
         video_path = os.path.join(review_path, "result.mp4")
+        dummy_video_data = base64.b64encode(b"dummy_video_content").decode("utf-8")
         with open(video_path, "wb") as vf:
-            vf.write(base64.b64decode(result_video))
+            vf.write(base64.b64decode(dummy_video_data))
 
         # Save decision
         with open(os.path.join(review_path, "result.json"), "w") as df:
-            json.dump({"decision": final_decision}, df)
+            json.dump({"decision": "dummy_decision"}, df)
 
-        print(f"[✓] Review {review_id} completed successfully")
+        print(f"[DEBUG] Output video base64 preview: {ball_data[:100]}...")
 
     except Exception as e:
         print(f"[ERROR] Processing failed for {review_id}: {e}")
@@ -55,7 +68,7 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
 async def submit_review(input_data: VideoAnalysisInput):
     try:
         review_id = str(uuid4())
-        review_path = os.path.join(REVIEW_DIR, review_id)
+        review_path = os.path.join(REVIEW_DIR, review_id+ "/")
         os.makedirs(review_path, exist_ok=True)
 
         # Save input data
