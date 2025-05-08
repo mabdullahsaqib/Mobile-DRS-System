@@ -115,6 +115,15 @@ class ObjectDetector:
        
         results["stumps"] = stump_detections
         batsman_detections = self._detect_batsman_traditional(frame)
+
+        #         # Detect batsman
+        # batsman_detections = self._detect_batsman_traditional(frame)
+        # results["batsman"] = batsman_detections
+
+        # Detect bat using region around batsman
+        bat_detections = self._detect_bat_traditional(frame, batsman_detections)
+        results["bat"] = bat_detections
+
         
         frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
         rects, weights = self.hog.detectMultiScale(
@@ -356,5 +365,35 @@ class ObjectDetector:
 
         return stumps
     
+
+    def _detect_bat_traditional(self, frame: np.ndarray, batsman_boxes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Detect bat using contours and edge detection near the batsman's region.
+        """
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 50, 150)
+
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        detected_bats = []
+        for batsman in batsman_boxes:
+            x_b, y_b, w_b, h_b = batsman["bbox"]
+
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour)
+                area = cv2.contourArea(contour)
+
+                # Check if contour is near batsman and resembles a bat shape
+                if area > 500 and 2 < h/w < 10 and \
+                   (x_b - 50 < x < x_b + w_b + 50) and (y_b - 50 < y < y_b + h_b + 50):
+                    
+                    detected_bats.append({
+                        "bbox": (x, y, w, h),
+                        "area": float(area),
+                        "edges": contour.tolist()  # Store edge points if needed
+                    })
+
+        return detected_bats
+
     def _init_deep_learning_models(self):
         return
