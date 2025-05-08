@@ -1,0 +1,1107 @@
+{
+  "frames": [
+    {
+      "frame_id": 1,
+      "timestamp": 0.03,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [172, 129, 15, 15],
+            "confidence": 0.85,
+            "top": [135, 115],
+            "bottom": [165, 165]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [267, 145, 10, 50],
+            "confidence": 0.93,
+            "top": [293, 124],
+            "bottom": [271, 176]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 2,
+      "timestamp": 0.06,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [175, 132, 15, 15],
+            "confidence": 0.87,
+            "top": [138, 118],
+            "bottom": [168, 168]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [268, 146, 10, 50],
+            "confidence": 0.94,
+            "top": [294, 125],
+            "bottom": [272, 177]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 3,
+      "timestamp": 0.09,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [178, 135, 15, 15],
+            "confidence": 0.86,
+            "top": [141, 121],
+            "bottom": [171, 171]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [269, 147, 10, 50],
+            "confidence": 0.93,
+            "top": [295, 126],
+            "bottom": [273, 178]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 4,
+      "timestamp": 0.12,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [181, 138, 15, 15],
+            "confidence": 0.88,
+            "top": [144, 124],
+            "bottom": [174, 174]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [270, 148, 10, 50],
+            "confidence": 0.95,
+            "top": [296, 127],
+            "bottom": [274, 179]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 5,
+      "timestamp": 0.15,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [184, 141, 15, 15],
+            "confidence": 0.85,
+            "top": [147, 127],
+            "bottom": [177, 177]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [271, 149, 10, 50],
+            "confidence": 0.94,
+            "top": [297, 128],
+            "bottom": [275, 180]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 6,
+      "timestamp": 0.18,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [187, 144, 15, 15],
+            "confidence": 0.86,
+            "top": [150, 130],
+            "bottom": [180, 180]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [272, 150, 10, 50],
+            "confidence": 0.93,
+            "top": [298, 129],
+            "bottom": [276, 181]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 7,
+      "timestamp": 0.21,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [190, 147, 15, 15],
+            "confidence": 0.87,
+            "top": [153, 133],
+            "bottom": [183, 183]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [273, 151, 10, 50],
+            "confidence": 0.94,
+            "top": [299, 130],
+            "bottom": [277, 182]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 8,
+      "timestamp": 0.24,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [193, 150, 15, 15],
+            "confidence": 0.88,
+            "top": [156, 136],
+            "bottom": [186, 186]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [274, 152, 10, 50],
+            "confidence": 0.95,
+            "top": [300, 131],
+            "bottom": [278, 183]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 9,
+      "timestamp": 0.27,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [196, 153, 15, 15],
+            "confidence": 0.85,
+            "top": [159, 139],
+            "bottom": [189, 189]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [275, 153, 10, 50],
+            "confidence": 0.94,
+            "top": [301, 132],
+            "bottom": [279, 184]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 10,
+      "timestamp": 0.3,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [199, 156, 15, 15],
+            "confidence": 0.86,
+            "top": [162, 142],
+            "bottom": [192, 192]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [276, 154, 10, 50],
+            "confidence": 0.93,
+            "top": [302, 133],
+            "bottom": [280, 185]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 11,
+      "timestamp": 0.33,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [202, 159, 15, 15],
+            "confidence": 0.87,
+            "top": [165, 145],
+            "bottom": [195, 195]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [277, 155, 10, 50],
+            "confidence": 0.94,
+            "top": [303, 134],
+            "bottom": [281, 186]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 12,
+      "timestamp": 0.36,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [205, 162, 15, 15],
+            "confidence": 0.88,
+            "top": [168, 148],
+            "bottom": [198, 198]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [278, 156, 10, 50],
+            "confidence": 0.95,
+            "top": [304, 135],
+            "bottom": [282, 187]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 13,
+      "timestamp": 0.39,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [208, 165, 15, 15],
+            "confidence": 0.85,
+            "top": [171, 151],
+            "bottom": [201, 201]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [279, 157, 10, 50],
+            "confidence": 0.94,
+            "top": [305, 136],
+            "bottom": [283, 188]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 14,
+      "timestamp": 0.42,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [211, 168, 15, 15],
+            "confidence": 0.86,
+            "top": [174, 154],
+            "bottom": [204, 204]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [280, 158, 10, 50],
+            "confidence": 0.93,
+            "top": [306, 137],
+            "bottom": [284, 189]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 15,
+      "timestamp": 0.45,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [214, 171, 15, 15],
+            "confidence": 0.87,
+            "top": [177, 157],
+            "bottom": [207, 207]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [281, 159, 10, 50],
+            "confidence": 0.94,
+            "top": [307, 138],
+            "bottom": [285, 190]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 16,
+      "timestamp": 0.48,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [217, 174, 15, 15],
+            "confidence": 0.88,
+            "top": [180, 160],
+            "bottom": [210, 210]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [282, 160, 10, 50],
+            "confidence": 0.95,
+            "top": [308, 139],
+            "bottom": [286, 191]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 17,
+      "timestamp": 0.51,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [220, 177, 15, 15],
+            "confidence": 0.85,
+            "top": [183, 163],
+            "bottom": [213, 213]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [283, 161, 10, 50],
+            "confidence": 0.94,
+            "top": [309, 140],
+            "bottom": [287, 192]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 18,
+      "timestamp": 0.54,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [223, 180, 15, 15],
+            "confidence": 0.86,
+            "top": [186, 166],
+            "bottom": [216, 216]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [284, 162, 10, 50],
+            "confidence": 0.93,
+            "top": [310, 141],
+            "bottom": [288, 193]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 19,
+      "timestamp": 0.57,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [226, 183, 15, 15],
+            "confidence": 0.87,
+            "top": [189, 169],
+            "bottom": [219, 219]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [285, 163, 10, 50],
+            "confidence": 0.94,
+            "top": [311, 142],
+            "bottom": [289, 194]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 20,
+      "timestamp": 0.6,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [229, 186, 15, 15],
+            "confidence": 0.88,
+            "top": [192, 172],
+            "bottom": [222, 222]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [286, 164, 10, 50],
+            "confidence": 0.95,
+            "top": [312, 143],
+            "bottom": [290, 195]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 21,
+      "timestamp": 0.63,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [232, 189, 15, 15],
+            "confidence": 0.85,
+            "top": [195, 175],
+            "bottom": [225, 225]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [287, 165, 10, 50],
+            "confidence": 0.94,
+            "top": [313, 144],
+            "bottom": [291, 196]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 22,
+      "timestamp": 0.66,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [235, 192, 15, 15],
+            "confidence": 0.86,
+            "top": [198, 178],
+            "bottom": [228, 228]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [288, 166, 10, 50],
+            "confidence": 0.93,
+            "top": [314, 145],
+            "bottom": [292, 197]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 23,
+      "timestamp": 0.69,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [238, 195, 15, 15],
+            "confidence": 0.87,
+            "top": [201, 181],
+            "bottom": [231, 231]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [289, 167, 10, 50],
+            "confidence": 0.94,
+            "top": [315, 146],
+            "bottom": [293, 198]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 24,
+      "timestamp": 0.72,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [241, 198, 15, 15],
+            "confidence": 0.88,
+            "top": [204, 184],
+            "bottom": [234, 234]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [290, 168, 10, 50],
+            "confidence": 0.95,
+            "top": [316, 147],
+            "bottom": [294, 199]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 25,
+      "timestamp": 0.75,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [244, 201, 15, 15],
+            "confidence": 0.85,
+            "top": [207, 187],
+            "bottom": [237, 237]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [291, 169, 10, 50],
+            "confidence": 0.94,
+            "top": [317, 148],
+            "bottom": [295, 200]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 26,
+      "timestamp": 0.78,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [247, 204, 15, 15],
+            "confidence": 0.86,
+            "top": [210, 190],
+            "bottom": [240, 240]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [292, 170, 10, 50],
+            "confidence": 0.93,
+            "top": [318, 149],
+            "bottom": [296, 201]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 27,
+      "timestamp": 0.81,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [250, 207, 15, 15],
+            "confidence": 0.87,
+            "top": [213, 191],
+            "bottom": [243, 243]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [293, 171, 10, 50],
+            "confidence": 0.94,
+            "top": [319, 150],
+            "bottom": [297, 202]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 28,
+      "timestamp": 0.84,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [253, 210, 15, 15],
+            "confidence": 0.88,
+            "top": [216, 194],
+            "bottom": [246, 246]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [294, 172, 10, 50],
+            "confidence": 0.95,
+            "top": [320, 151],
+            "bottom": [298, 203]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 29,
+      "timestamp": 0.87,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [256, 213, 15, 15],
+            "confidence": 0.85,
+            "top": [219, 197],
+            "bottom": [249, 249]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [295, 173, 10, 50],
+            "confidence": 0.94,
+            "top": [321, 152],
+            "bottom": [299, 204]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 30,
+      "timestamp": 0.9,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [259, 216, 15, 15],
+            "confidence": 0.86,
+            "top": [222, 200],
+            "bottom": [252, 252]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [296, 174, 10, 50],
+            "confidence": 0.93,
+            "top": [322, 153],
+            "bottom": [300, 205]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 31,
+      "timestamp": 0.93,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [262, 219, 15, 15],
+            "confidence": 0.87,
+            "top": [225, 203],
+            "bottom": [255, 255]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [297, 175, 10, 50],
+            "confidence": 0.94,
+            "top": [323, 154],
+            "bottom": [301, 206]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 32,
+      "timestamp": 0.96,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [265, 222, 15, 15],
+            "confidence": 0.88,
+            "top": [228, 206],
+            "bottom": [258, 258]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [298, 176, 10, 50],
+            "confidence": 0.95,
+            "top": [324, 155],
+            "bottom": [302, 207]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 33,
+      "timestamp": 0.99,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [268, 225, 15, 15],
+            "confidence": 0.85,
+            "top": [231, 209],
+            "bottom": [261, 261]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [299, 177, 10, 50],
+            "confidence": 0.94,
+            "top": [325, 156],
+            "bottom": [303, 208]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 34,
+      "timestamp": 1.02,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [271, 228, 15, 15],
+            "confidence": 0.86,
+            "top": [234, 212],
+            "bottom": [264, 264]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [300, 178, 10, 50],
+            "confidence": 0.93,
+            "top": [326, 157],
+            "bottom": [304, 209]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 35,
+      "timestamp": 1.05,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [274, 231, 15, 15],
+            "confidence": 0.87,
+            "top": [237, 215],
+            "bottom": [267, 267]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [301, 179, 10, 50],
+            "confidence": 0.94,
+            "top": [327, 158],
+            "bottom": [305, 210]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 36,
+      "timestamp": 1.08,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [277, 234, 15, 15],
+            "confidence": 0.88,
+            "top": [240, 218],
+            "bottom": [270, 270]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [302, 180, 10, 50],
+            "confidence": 0.95,
+            "top": [328, 159],
+            "bottom": [306, 211]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 37,
+      "timestamp": 1.11,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [280, 237, 15, 15],
+            "confidence": 0.85,
+            "top": [243, 221],
+            "bottom": [273, 273]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [303, 181, 10, 50],
+            "confidence": 0.94,
+            "top": [329, 160],
+            "bottom": [307, 212]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 38,
+      "timestamp": 1.14,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [283, 240, 15, 15],
+            "confidence": 0.86,
+            "top": [246, 224],
+            "bottom": [276, 276]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [304, 182, 10, 50],
+            "confidence": 0.93,
+            "top": [330, 161],
+            "bottom": [308, 213]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 39,
+      "timestamp": 1.17,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [286, 243, 15, 15],
+            "confidence": 0.87,
+            "top": [249, 227],
+            "bottom": [279, 279]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [305, 183, 10, 50],
+            "confidence": 0.94,
+            "top": [331, 162],
+            "bottom": [309, 214]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 40,
+      "timestamp": 1.2,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [289, 246, 15, 15],
+            "confidence": 0.88,
+            "top": [252, 230],
+            "bottom": [282, 282]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [306, 184, 10, 50],
+            "confidence": 0.95,
+            "top": [332, 163],
+            "bottom": [310, 215]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 41,
+      "timestamp": 1.23,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [292, 249, 15, 15],
+            "confidence": 0.85,
+            "top": [255, 233],
+            "bottom": [285, 285]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [307, 185, 10, 50],
+            "confidence": 0.94,
+            "top": [333, 164],
+            "bottom": [311, 216]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 42,
+      "timestamp": 1.26,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [295, 252, 15, 15],
+            "confidence": 0.86,
+            "top": [258, 236],
+            "bottom": [288, 288]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [308, 186, 10, 50],
+            "confidence": 0.93,
+            "top": [334, 165],
+            "bottom": [312, 217]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 43,
+      "timestamp": 1.29,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [298, 255, 15, 15],
+            "confidence": 0.87,
+            "top": [261, 239],
+            "bottom": [291, 291]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [309, 187, 10, 50],
+            "confidence": 0.94,
+            "top": [335, 166],
+            "bottom": [313, 218]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 44,
+      "timestamp": 1.32,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [301, 258, 15, 15],
+            "confidence": 0.88,
+            "top": [264, 242],
+            "bottom": [294, 294]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [310, 188, 10, 50],
+            "confidence": 0.95,
+            "top": [336, 167],
+            "bottom": [314, 219]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 45,
+      "timestamp": 1.35,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [304, 261, 15, 15],
+            "confidence": 0.85,
+            "top": [267, 245],
+            "bottom": [297, 297]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [311, 189, 10, 50],
+            "confidence": 0.94,
+            "top": [337, 168],
+            "bottom": [315, 220]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 46,
+      "timestamp": 1.38,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [307, 264, 15, 15],
+            "confidence": 0.86,
+            "top": [270, 248],
+            "bottom": [300, 300]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [312, 190, 10, 50],
+            "confidence": 0.93,
+            "top": [338, 169],
+            "bottom": [316, 221]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 47,
+      "timestamp": 1.41,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [310, 267, 15, 15],
+            "confidence": 0.87,
+            "top": [273, 251],
+            "bottom": [303, 303]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [313, 191, 10, 50],
+            "confidence": 0.94,
+            "top": [339, 170],
+            "bottom": [317, 222]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 48,
+      "timestamp": 1.44,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [313, 270, 15, 15],
+            "confidence": 0.88,
+            "top": [276, 254],
+            "bottom": [306, 306]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [314, 192, 10, 50],
+            "confidence": 0.95,
+            "top": [340, 171],
+            "bottom": [318, 223]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 49,
+      "timestamp": 1.47,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [316, 273, 15, 15],
+            "confidence": 0.85,
+            "top": [279, 257],
+            "bottom": [309, 309]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [315, 193, 10, 50],
+            "confidence": 0.94,
+            "top": [341, 172],
+            "bottom": [319, 224]
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": 50,
+      "timestamp": 1.5,
+      "detections": {
+        "ball": [
+          {
+            "bbox": [319, 276, 15, 15],
+            "confidence": 0.86,
+            "top": [282, 260],
+            "bottom": [312, 312]
+          }
+        ],
+        "stumps": [
+          {
+            "bbox": [316, 194, 10, 50],
+            "confidence": 0.93,
+            "top": [342, 173],
+            "bottom": [320, 225]
+          }
+        ]
+      }
+    }
+  ],
+  "decision": {
+    "isOut": true
+  }
+}
