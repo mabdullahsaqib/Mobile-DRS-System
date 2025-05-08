@@ -7,7 +7,7 @@ from core.InputModel import VideoAnalysisInput
 from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
 # from modules.edge_detection.src import edge_detection
 # from modules.trajectory_analysis.src import trajectory_analysis
-# from modules.decision_making.src import decision_making
+from modules.decision_making.FinalDecision import final_decision
 # from modules.stream_analysis.src import stream_analysis
 
 app = FastAPI()
@@ -21,7 +21,7 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         review_path = os.path.join(REVIEW_DIR, review_id + "/")
 
         # Module 2: Ball Tracking
-        ball_data = ball_tracking_dummy(duration_sec=15, fps=3)
+        ball_data = ball_tracking_dummy(duration_sec=15, fps=30)
 
         # # Module 3: Edge Detection
         # edge_result = edge_detection(ball_data)
