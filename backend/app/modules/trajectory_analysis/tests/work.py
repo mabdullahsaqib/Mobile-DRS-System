@@ -43,19 +43,24 @@ def find_first_z_drop(frames):
         prev_z = z
     return None
 
-def compute_average_spin_rate(frames):
+def compute_average_spin_rate(frames, start_frame_id, end_frame_id):
     """
-    Computes the average spin rate from a list of frames.
+    Computes the average spin rate between two frame IDs (inclusive).
     
     Parameters:
         frames (list): A list of frame dictionaries.
+        start_frame_id (int): Starting frame ID (inclusive).
+        end_frame_id (int): Ending frame ID (inclusive).
     
     Returns:
-        float or None: The average spin rate, or None if no valid data found.
+        float or None: The average spin rate in rpm, or None if no valid data.
     """
     total_spin = 0
     count = 0
-    for idx, frame in enumerate(frames):
+    for frame in frames:
+        frame_id = frame.get("frame_id")
+        if frame_id is None or not (start_frame_id <= frame_id <= end_frame_id):
+            continue
         try:
             spin_rate = frame["ball_trajectory"]["spin"]["rate"]
             if isinstance(spin_rate, (int, float)):
@@ -64,6 +69,7 @@ def compute_average_spin_rate(frames):
         except (KeyError, TypeError):
             continue
     return total_spin / count if count > 0 else None
+
 
 
 
@@ -93,7 +99,7 @@ def main():
         print(f"Bounce point frame: {bounce_frame}")
     else:
         print("No valid frames before z-drop to compute bounce point.")
-    average_spin_rate = compute_average_spin_rate(data)
+    average_spin_rate = compute_average_spin_rate(data,bounce_frame,drop_frame)
     if average_spin_rate is None:
         print(f"Spin rate not available")    
 
