@@ -1,0 +1,57 @@
+{
+    "frame_id": 25,
+    "timestamp": 0.8666,
+    "detections": {
+      "ball": [
+        {
+          "bbox": [998, 991, 31, 31],
+          "confidence": 1.0,
+          "center": [1014, 1007],
+          "radius": 15,
+          "z": 3.46
+        }
+      ],
+      "stumps": [
+        {
+          "bbox": [967, 501, 99, 265],
+          "confidence": 1.0
+        }
+      ],
+      "batsman": [
+        {
+          "bbox": [871, 162, 305, 609],
+          "confidence": 0.536
+        }
+      ],
+      "bat": [],
+      "pads": []
+    },
+    "ball_trajectory": {
+      "current_position": {
+        "x": 0.075,
+        "y": -1.153,
+        "z": 1.333
+      },
+      "velocity": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "acceleration": {
+        "x": 0.0,
+        "y": -9.8,
+        "z": 0.0
+      },
+      "spin": {
+        "axis": {
+          "x": 0.12,
+          "y": 0.96,
+          "z": 0.24
+        },
+        "rate": 25.5
+      },
+      "detection_confidence": 1.0,
+      "historical_positions": []
+    }
+  }
+  
