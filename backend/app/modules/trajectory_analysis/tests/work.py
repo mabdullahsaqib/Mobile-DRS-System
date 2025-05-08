@@ -43,32 +43,54 @@ def find_first_z_drop(frames):
         prev_z = z
     return None
 
-def compute_average_spin_rate(frames, start_frame_id, end_frame_id):
+def compute_average_spin_and_axis_between(frames, start_frame_id, end_frame_id):
     """
-    Computes the average spin rate between two frame IDs (inclusive).
-    
+    Computes the average spin rate and average spin axis (x, y, z)
+    between two frame IDs (inclusive start, exclusive end).
+
     Parameters:
-        frames (list): A list of frame dictionaries.
-        start_frame_id (int): Starting frame ID (inclusive).
-        end_frame_id (int): Ending frame ID (inclusive).
-    
+        frames (list): List of frame dictionaries.
+        start_frame_id (int): The starting frame ID.
+        end_frame_id (int): The ending frame ID (not inclusive).
+
     Returns:
-        float or None: The average spin rate in rpm, or None if no valid data.
+        dict or None: A dictionary with average 'rate', 'axis_x', 'axis_y', 'axis_z',
+                      or None if no valid data found.
     """
-    total_spin = 0
+    total_rate = 0
+    total_axis_x = 0
+    total_axis_y = 0
+    total_axis_z = 0
     count = 0
-    for frame in frames:
-        frame_id = frame.get("frame_id")
-        if frame_id is None or not (start_frame_id <= frame_id <= end_frame_id):
+
+    for f in frames:
+        frame_id = f.get("frame_id")
+        if frame_id is None or not (start_frame_id <= frame_id < end_frame_id):
             continue
         try:
-            spin_rate = frame["ball_trajectory"]["spin"]["rate"]
-            if isinstance(spin_rate, (int, float)):
-                total_spin += spin_rate
-                count += 1
+            spin = f["ball_trajectory"]["spin"]
+            rate = spin["rate"]
+            axis = spin["axis"]
+            if not all(isinstance(val, (int, float)) for val in [rate, axis["x"], axis["y"], axis["z"]]):
+                continue
+            total_rate += rate
+            total_axis_x += axis["x"]
+            total_axis_y += axis["y"]
+            total_axis_z += axis["z"]
+            count += 1
         except (KeyError, TypeError):
             continue
-    return total_spin / count if count > 0 else None
+
+    if count == 0:
+        return None
+
+    return {
+        "rate": total_rate / count,
+        "axis_x": total_axis_x / count,
+        "axis_y": total_axis_y / count,
+        "axis_z": total_axis_z / count,
+    }
+
 
 
 
@@ -99,9 +121,15 @@ def main():
         print(f"Bounce point frame: {bounce_frame}")
     else:
         print("No valid frames before z-drop to compute bounce point.")
-    average_spin_rate = compute_average_spin_rate(data,bounce_frame,drop_frame)
-    if average_spin_rate is None:
-        print(f"Spin rate not available")    
+        
+    if bounce_frame is not None and drop_frame is not None:
+        spin_stats = compute_average_spin_and_axis_between(data, bounce_frame, drop_frame)
+        if spin_stats:
+            print(f"Average spin rate between bounce and z-drop: {spin_stats['rate']:.2f} rpm")
+            print(f"Average spin axis: x = {spin_stats['axis_x']:.4f}, y = {spin_stats['axis_y']:.4f}, z = {spin_stats['axis_z']:.4f}")
+        else:
+            print(f"No valid spin data between frames {bounce_frame} and {drop_frame}.")
+    
 
 if __name__ == "__main__":
     main()
