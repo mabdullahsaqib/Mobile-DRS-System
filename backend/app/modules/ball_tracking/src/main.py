@@ -9,7 +9,7 @@ from object_detector import ObjectDetector
 from stump_detector import StumpDetector
 from ball_tracker import BallTracker
 from batsman_tracker import BatsmanTracker
-
+from backend.app.modules.ball_tracking.src.Mod2output import get_output_data
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Ball and Object Tracker Module")
