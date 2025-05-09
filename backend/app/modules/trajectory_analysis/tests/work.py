@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 import sys
+from typing import Tuple
+import numpy as np
 
 def extract_ball_positions(frames):
     positions = []
@@ -30,6 +32,86 @@ def find_lowest_y_before(frames, end_frame_id):
             lowest = y
             lowest_frame = frame_id
     return lowest_frame
+
+
+from typing import Tuple
+import numpy as np
+
+
+def estimate_spin_rate_between_frames(frames, bounce_frame_id, hit_frame_id):
+
+    try:
+
+        relevant_frames = [
+            f
+            for f in frames
+            if bounce_frame_id <= f.get("frame_id", -1) <= hit_frame_id
+        ]
+        if not relevant_frames:
+            raise ValueError("No frames found in the given ID range.")
+
+        relevant_frames.sort(key=lambda x: x["frame_id"])
+
+        positions = []
+        timestamps = []
+
+        for frame in relevant_frames:
+            traj = frame.get("ball_trajectory", {})
+            current_pos = traj.get("current_position")
+            if current_pos:
+                x, y, z = (
+                    current_pos.get("x"),
+                    current_pos.get("y"),
+                    current_pos.get("z"),
+                )
+                if x is not None and y is not None and z is not None:
+                    positions.append([x, y, z])
+                    timestamps.append(frame.get("timestamp"))
+                else:
+                    print(
+                        f"Incomplete position data in frame {frame['frame_id']}. Skipping."
+                    )
+            else:
+                print(f"No trajectory in frame {frame['frame_id']}. Skipping.")
+
+        if len(positions) < 3:
+            raise ValueError("Not enough valid position data to estimate spin.")
+
+        positions = np.array(positions)
+
+        v = np.gradient(positions, axis=0)  # First derivative -> velocity
+        a = np.gradient(v, axis=0)  # second derivative -> acceleration
+        mid_index = len(positions) // 2
+
+        velocity = v[mid_index]
+        acceleration = a[mid_index]
+
+        magnus_force_direction = np.cross(velocity, acceleration)
+        norm = np.linalg.norm(magnus_force_direction)
+        if norm == 0:
+            raise ValueError("Spin axis undefined due to zero magnus force direction.")
+
+        spin_axis = magnus_force_direction / (norm + 1e-8)
+        spin_rate = float(norm)
+
+        spin_along_axis = spin_axis * spin_rate
+
+        return {
+            "rate": spin_rate,
+            "axis_x": spin_along_axis[0],
+            "axis_y": spin_along_axis[1],
+            "axis_z": spin_along_axis[2],
+        }
+
+    except Exception as e:
+        print(f"Error estimating spin rate: {e}")
+        return {
+            "rate": 0,
+            "axis_x": 0.0,
+            "axis_y": 0.0,
+            "axis_z": 0.0,
+        }
+
 
 def find_first_z_drop(frames):
     prev_z = None
@@ -163,17 +245,21 @@ def main():
         print("No valid frames before z-drop to compute bounce point.")
 
     if bounce_frame is not None and drop_frame is not None:
-        spin_stats = compute_average_spin_and_axis_between(data, bounce_frame, drop_frame)
-        if spin_stats:
-            print(f"Average spin rate between bounce and z-drop: {spin_stats['rate']:.2f} rpm")
-            print(f"Average spin axis: x = {spin_stats['axis_x']:.4f}, y = {spin_stats['axis_y']:.4f}, z = {spin_stats['axis_z']:.4f}")
-        else:
-            print(f"No valid spin data between frames {bounce_frame} and {drop_frame}.")
+        spin_stats = compute_average_spin_and_axis_between(data, 35, 60)
 
+        # Testing by rei
+        spin_stats_t = estimate_spin_rate_between_frames(data, 35, 60);
+        print(spin_stats)
+        print(spin_stats_t)
+        # if spin_stats:
+        #     # print(f"Average spin rate between bounce and z-drop: {spin_stats['rate']:.2f} rpm")
+        #     print(f"Average spin axis: x = {spin_stats['axis_x']:.4f}, y = {spin_stats['axis_y']:.4f}, z = {spin_stats['axis_z']:.4f}")
+        # else:
+        #     print(f"No valid spin data between frames {bounce_frame} and {drop_frame}.")
 
     # Set constant average velocity and acceleration (approximation for realism)
-    #avg_velocity = {'x': 0.0, 'y': -17.0, 'z': 1.5}  # meters/second
-    #avg_acceleration = {'x': 0.0, 'y': -9.8, 'z': 0.0}  # only gravity
+    # avg_velocity = {'x': 0.0, 'y': -17.0, 'z': 1.5}  # meters/second
+    # avg_acceleration = {'x': 0.0, 'y': -9.8, 'z': 0.0}  # only gravity
 
     # Get last known position from z-drop frame
     z_frame = next((f for f in data if f["frame_id"] == drop_frame), None)
@@ -212,8 +298,7 @@ def main():
         print(f"Ball hit the stumps at position: x={position['x']:.2f}, y={position['y']:.2f}, z={position['z']:.2f}")
     else:
         print("Ball did not hit the stumps.")
-      
-    
+
 
 if __name__ == "__main__":
     main()
