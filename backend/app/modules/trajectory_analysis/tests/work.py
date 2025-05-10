@@ -217,88 +217,132 @@ def did_hit_stumps(trajectory, stumps_bbox, ball_radius=0.07):
     return False, None
 
 
-def main():
-    path = Path(__file__).parent / "module2_output.json"
-    if not path.exists():
-        print(f"Error: file not found at {path}", file=sys.stderr)
-        sys.exit(1)
-    text = path.read_text()
-    if not text.strip():
-        print(f"Error: {path} is empty", file=sys.stderr)
-        sys.exit(1)
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError as e:
-        print(f"JSON decode error at line {e.lineno}, column {e.colno}: {e.msg}", file=sys.stderr)
-        sys.exit(1)
-    coords = extract_ball_positions(data)
-    for frame_id, x, y, z in coords:
-        print(frame_id, x, y, z)
-    drop_frame = find_first_z_drop(data)
-    if drop_frame is not None:
-        print(f"First Z drop before frame: {drop_frame}")
 
-    bounce_frame = find_lowest_y_before(data, drop_frame)
-    if bounce_frame is not None:
-        print(f"Bounce point frame: {bounce_frame}")
+# def main():
+#     path = Path(__file__).parent / "module2_output.json"
+#     if not path.exists():
+#         print(f"Error: file not found at {path}", file=sys.stderr)
+#         sys.exit(1)
+#     text = path.read_text()
+#     if not text.strip():
+#         print(f"Error: {path} is empty", file=sys.stderr)
+#         sys.exit(1)
+#     try:
+#         data = json.loads(text)
+#     except json.JSONDecodeError as e:
+#         print(f"JSON decode error at line {e.lineno}, column {e.colno}: {e.msg}", file=sys.stderr)
+#         sys.exit(1)
+#     coords = extract_ball_positions(data)
+#     for frame_id, x, y, z in coords:
+#         print(frame_id, x, y, z)
+#     drop_frame = find_first_z_drop(data)
+#     if drop_frame is not None:
+#         print(f"First Z drop before frame: {drop_frame}")
+
+#     bounce_frame = find_lowest_y_before(data, drop_frame)
+#     if bounce_frame is not None:
+#         print(f"Bounce point frame: {bounce_frame}")
+#     else:
+#         print("No valid frames before z-drop to compute bounce point.")
+
+#     if bounce_frame is not None and drop_frame is not None:
+#         spin_stats = compute_average_spin_and_axis_between(data, 35, 60)
+
+#         # Testing by rei
+#         spin_stats_t = estimate_spin_rate_between_frames(data, 35, 60);
+#         print(spin_stats)
+#         print(spin_stats_t)
+#         # if spin_stats:
+#         #     # print(f"Average spin rate between bounce and z-drop: {spin_stats['rate']:.2f} rpm")
+#         #     print(f"Average spin axis: x = {spin_stats['axis_x']:.4f}, y = {spin_stats['axis_y']:.4f}, z = {spin_stats['axis_z']:.4f}")
+#         # else:
+#         #     print(f"No valid spin data between frames {bounce_frame} and {drop_frame}.")
+
+#     # Set constant average velocity and acceleration (approximation for realism)
+#     # avg_velocity = {'x': 0.0, 'y': -17.0, 'z': 1.5}  # meters/second
+#     # avg_acceleration = {'x': 0.0, 'y': -9.8, 'z': 0.0}  # only gravity
+
+#     # Get last known position from z-drop frame
+#     z_frame = next((f for f in data if f["frame_id"] == drop_frame), None)
+#     if z_frame:
+#         start_pos = z_frame["ball_trajectory"]["current_position"]
+#         vel = z_frame["ball_trajectory"]["velocity"]
+#         acc = z_frame["ball_trajectory"]["acceleration"]
+
+#         # Use previously computed average spin axis/rate
+#         spin_axis = {
+#             'x': spin_stats['axis_x'],
+#             'y': spin_stats['axis_y'],
+#             'z': spin_stats['axis_z']
+#         }
+#         spin_rate = spin_stats['rate']
+
+#         # Simulate
+#         future_positions = extrapolate_trajectory(
+#             initial_position=start_pos,
+#             velocity=vel,
+#             acceleration=acc,
+#             spin_axis=spin_axis,
+#             spin_rate=spin_rate,
+#             steps=30
+#         )
+
+#         for i, pos in enumerate(future_positions):
+#             print(f"Step {i+1}: x={pos['x']:.2f}, y={pos['y']:.2f}, z={pos['z']:.2f}")
+#     # Assume this is your stumps bbox (in meters or same units as ball trajectory)
+#     # You may need to convert pixel bbox to meters if your trajectory is in meters
+#     stumps_bbox = [0.75, -0.25, 0.3, 0.8]  # x, y, width, height
+
+#     hit, position = did_hit_stumps(future_positions, stumps_bbox)
+
+#     if hit:
+#         print(f"Ball hit the stumps at position: x={position['x']:.2f}, y={position['y']:.2f}, z={position['z']:.2f}")
+#     else:
+#         print("Ball did not hit the stumps.")
+
+
+# if __name__ == "__main__":
+#     main()
+def run_analysis(json_path: str) -> Tuple[list[dict[str, float]], bool]:
+    frames = json.loads(Path(json_path).read_text())
+
+    coords = extract_ball_positions(frames)
+    #for frame_id, x, y, z in coords:
+        #print(frame_id, x, y, z)
+
+    drop_frame = find_first_z_drop(frames)
+    #print(f"First Z drop before frame: {drop_frame}") if drop_frame is not None else None
+
+    bounce_frame = find_lowest_y_before(frames, drop_frame) if drop_frame is not None else None
+    #print(f"Bounce point frame: {bounce_frame}") if bounce_frame is not None else None
+
+    # Estimate spin (optional parameters hardcoded or could be dynamic)
+    spin_stats = compute_average_spin_and_axis_between(frames, bounce_frame, drop_frame) if bounce_frame and drop_frame else None
+
+    z_frame = next((f for f in frames if f.get("frame_id") == drop_frame), None)
+    if not z_frame:
+        raise ValueError("Z-drop frame data missing.")
+
+    init_pos = z_frame["ball_trajectory"]["current_position"]
+    vel = z_frame["ball_trajectory"]["velocity"]
+    acc = z_frame["ball_trajectory"]["acceleration"]
+    if spin_stats:
+        axis = {'x': spin_stats['axis_x'], 'y': spin_stats['axis_y'], 'z': spin_stats['axis_z']}
+        rate = spin_stats['rate']
     else:
-        print("No valid frames before z-drop to compute bounce point.")
+        spin = z_frame["ball_trajectory"]["spin"]
+        axis = spin["axis"]
+        rate = spin["rate"]
 
-    if bounce_frame is not None and drop_frame is not None:
-        spin_stats = compute_average_spin_and_axis_between(data, 35, 60)
+    trajectory = extrapolate_trajectory(init_pos, vel, acc, axis, rate)
+    stumps_bbox = [0.75, -0.25, 0.3, 0.8]
+    hit, _ = did_hit_stumps(trajectory, stumps_bbox)
 
-        # Testing by rei
-        spin_stats_t = estimate_spin_rate_between_frames(data, 35, 60);
-        print(spin_stats)
-        print(spin_stats_t)
-        # if spin_stats:
-        #     # print(f"Average spin rate between bounce and z-drop: {spin_stats['rate']:.2f} rpm")
-        #     print(f"Average spin axis: x = {spin_stats['axis_x']:.4f}, y = {spin_stats['axis_y']:.4f}, z = {spin_stats['axis_z']:.4f}")
-        # else:
-        #     print(f"No valid spin data between frames {bounce_frame} and {drop_frame}.")
-
-    # Set constant average velocity and acceleration (approximation for realism)
-    # avg_velocity = {'x': 0.0, 'y': -17.0, 'z': 1.5}  # meters/second
-    # avg_acceleration = {'x': 0.0, 'y': -9.8, 'z': 0.0}  # only gravity
-
-    # Get last known position from z-drop frame
-    z_frame = next((f for f in data if f["frame_id"] == drop_frame), None)
-    if z_frame:
-        start_pos = z_frame["ball_trajectory"]["current_position"]
-        vel = z_frame["ball_trajectory"]["velocity"]
-        acc = z_frame["ball_trajectory"]["acceleration"]
-
-        # Use previously computed average spin axis/rate
-        spin_axis = {
-            'x': spin_stats['axis_x'],
-            'y': spin_stats['axis_y'],
-            'z': spin_stats['axis_z']
-        }
-        spin_rate = spin_stats['rate']
-
-        # Simulate
-        future_positions = extrapolate_trajectory(
-            initial_position=start_pos,
-            velocity=vel,
-            acceleration=acc,
-            spin_axis=spin_axis,
-            spin_rate=spin_rate,
-            steps=30
-        )
-
-        for i, pos in enumerate(future_positions):
-            print(f"Step {i+1}: x={pos['x']:.2f}, y={pos['y']:.2f}, z={pos['z']:.2f}")
-    # Assume this is your stumps bbox (in meters or same units as ball trajectory)
-    # You may need to convert pixel bbox to meters if your trajectory is in meters
-    stumps_bbox = [0.75, -0.25, 0.3, 0.8]  # x, y, width, height
-
-    hit, position = did_hit_stumps(future_positions, stumps_bbox)
-
-    if hit:
-        print(f"Ball hit the stumps at position: x={position['x']:.2f}, y={position['y']:.2f}, z={position['z']:.2f}")
-    else:
-        print("Ball did not hit the stumps.")
-
+    return trajectory, hit
 
 if __name__ == "__main__":
-    main()
+    trajectory, hit = run_analysis(Path(__file__).parent / "module2_output.json")
+    print("Trajectory:")
+    for step in trajectory:
+        print(step)
+    print(f"Hit Stumps: {hit}")
