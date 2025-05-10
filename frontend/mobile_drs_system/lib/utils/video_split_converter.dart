@@ -56,7 +56,7 @@ Future<List<Map<String, dynamic>>> processVideo(
   await framesDir.create(recursive: true);
   await audioDir.create(recursive: true);
 
-  List<Map<String, dynamic>> result = [];
+  List<Map<String, dynamic>> results = [];
 
   try {
     final frames = await VideoFrameExtractor.extractFrames(
@@ -88,7 +88,7 @@ Future<List<Map<String, dynamic>>> processVideo(
         }
       }
 
-      result.add({
+      results.add({
         'frameId': i,
         'frameData': base64Frame,
         'audioData': base64Audio,
@@ -113,5 +113,5 @@ Future<List<Map<String, dynamic>>> processVideo(
   await framesDir.delete(recursive: true);
   await audioDir.delete(recursive: true);
 
-  return result;
+  return results;
 }

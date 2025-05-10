@@ -4,6 +4,7 @@ from uuid import uuid4
 import os, json, base64, threading
 from core.InputModel import VideoAnalysisInput
 
+# from modules.ball_tracking.src.main import ball_tracking
 from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
 from modules.edge_detection.router import edge_detection
 from modules.trajectory_analysis.tests.work import run_analysis
@@ -23,6 +24,9 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         module = 1
 
         # Module 2: Ball Tracking
+        # ball_data = ball_tracking(
+        #     input_data.results,
+        # )
         ball_data = ball_tracking_dummy(duration_sec=15, fps=30)
         with open("dummy_module2_output.json", "w") as f:
             json.dump(ball_data, f, indent=2)
@@ -83,12 +87,30 @@ async def submit_review(input_data: VideoAnalysisInput):
         threading.Thread(target=process_review, args=(review_id, input_data)).start()
 
         return {"review_id": review_id}
+    
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail=f"File not found: {e}")
+    
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"JSON decode error: {e}")
+    
+    except TypeError as e:
+        raise HTTPException(status_code=400, detail=f"Type error: {e}")
+    
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Value error: {e}")
+    
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=f"Permission error: {e}")
+    
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"OS error: {e}")
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Submit error: {e}")
 
 
-@app.get("/review-result/{review_id}")
+@app.get("/get-review/{review_id}")
 async def get_review_result(review_id: str):
     try:
         review_path = os.path.join(REVIEW_DIR, review_id)
