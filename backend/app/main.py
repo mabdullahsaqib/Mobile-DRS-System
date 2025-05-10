@@ -88,24 +88,6 @@ async def submit_review(input_data: VideoAnalysisInput):
 
         return {"review_id": review_id}
     
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=f"File not found: {e}")
-    
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=400, detail=f"JSON decode error: {e}")
-    
-    except TypeError as e:
-        raise HTTPException(status_code=400, detail=f"Type error: {e}")
-    
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Value error: {e}")
-    
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=f"Permission error: {e}")
-    
-    except OSError as e:
-        raise HTTPException(status_code=500, detail=f"OS error: {e}")
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Submit error: {e}")
 
