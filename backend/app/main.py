@@ -20,26 +20,38 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
     try:
         review_path = os.path.join(REVIEW_DIR, review_id + "/")
 
+        module = 1
+
         # Module 2: Ball Tracking
         ball_data = ball_tracking_dummy(duration_sec=15, fps=30)
         with open("dummy_module2_output.json", "w") as f:
             json.dump(ball_data, f, indent=2)
 
+        module = 2
+
         # Module 3: Edge Detection
         edge_result = edge_detection(ball_data)
 
+        module = 3
+
         # Module 4: Trajectory Analysis
         trajectory_data, hit  = run_analysis(ball_data)
+
+        module = 4
 
         # Module 5: Decision Making
         decision = final_decision(
             ball_data, edge_result, hit
         )
 
+        module = 5
+
         # Module 6: Stream Analysis
         result_video = augmented_stream(
             input_data.results, ball_data, decision
         )
+
+        module = 6
 
         # Save result video
         video_path = os.path.join(review_path, "video.txt")
@@ -53,7 +65,7 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         print(f"Review {review_id} completed successfully")
 
     except Exception as e:
-        print(f"[ERROR] Processing failed for {review_id}: {e}")
+        print(f"[ERROR] Processing failed for {review_id}: {e} (module={module})")
 
 
 @app.post("/submit-review")

@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument('--visualize', action='store_true', help='Visualize detections')
     return parser.parse_args()
 
-def main():
+def ball_tracking():
     args = parse_arguments()
 
     # Load config
@@ -122,6 +122,3 @@ def main():
     # Save output
     with open(args.output, 'w') as f:
         json.dump(all_outputs, f, indent=2)
-
-if __name__ == "__main__":
-    main()
