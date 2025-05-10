@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
-from typing import List
+import json
+import os
+from typing import Any, List, Tuple
 from frame_stumps import StumpTracker
 from Input_model import (
     FrameInput,
@@ -13,7 +15,7 @@ from Output_model import (
     PredictedPoint,
     SwingCharacteristics,
 )
-from modules.trajectory_analysis.physics import detect_bounce
+from physics import detect_bounce, detect_bounce_kinematic
 
 
 def compute_trajectory(
@@ -38,19 +40,17 @@ def compute_trajectory(
     return points
 
 
-def get_ball_positions(frames: List[FrameInput]) -> List[List[float]]:
-    positions: List[List[float]] = []
+def get_ball_positions(raw_ball: Any) -> List[List[float]]:
+    ball_positions: List[List[float]] = []
 
-    for frame in frames:
-        ball_detections = frame.detections.ball
-        if not ball_detections:
+    for obj in raw_ball:
+        ball_traj = obj["ball_trajectory"]
+        if not ball_traj:
             continue
+        ball_pos = ball_traj["current_position"]
+        ball_positions.append([ball_pos["x"], ball_pos["y"], ball_pos["z"]])
 
-        det = ball_detections[0]
-        x, y, _ = det.centre.x, det.centre.y, det.centre.z
-        positions.append([x, y, 0.0])
-
-    return positions
+    return ball_positions
 
 
 def get_stump_positions(frames: List[FrameInput]) -> List[List[StumpDetection]]:
@@ -63,29 +63,51 @@ def get_stump_positions(frames: List[FrameInput]) -> List[List[StumpDetection]]:
     return all_stump_positions
 
 
+def get_ball_vel_acc(
+    raw_ball: Any,
+) -> Tuple[List[List[float]], List[List[float]]]:
+    vel: List[List[float]] = []
+    accel: List[List[float]] = []
+
+    for obj in raw_ball:
+        ball_traj = obj["ball_trajectory"]
+        if not ball_traj:
+            continue
+        ball_vel=ball_traj["velocity"]
+        ball_accel=ball_traj["acceleration"]
+        if not ball_vel or not ball_accel:
+            continue
+        vel.append([ball_vel["x"], ball_vel["y"], ball_vel["z"]])
+        accel.append([ball_accel["x"], ball_accel["y"], ball_accel["z"]])
+        
+    return (vel, accel)
+
+
 def estimate_spin() -> Spin:
     return Spin(rate=30.0, axis=Position3D(x=0.0, y=0.0, z=1.0))
 
 
 stump_tracker = StumpTracker(jitter_threshold=3)
 
+
 def process_frame(frame: List[FrameInput]) -> TrajectoryAnalysisResult:
     # position, velocity = estimate_position_and_velocity(frame)
     spin = estimate_spin()
     ball_positions = get_ball_positions(frame)
-
+    vel, accel = get_ball_vel_acc(frame)
     # After getting bounce point, now we will predict the trajectory up till the stump positions
-    bounce_pos: int | None = detect_bounce(ball_positions)
+    bounce_pos = detect_bounce(ball_positions)
     if bounce_pos == None:
         # No bounce point found, probably a full toss
         pass
-    # TODO : predict trajectory from bounce point up till stump positions or player (idk)
-    predicted_trajectory = compute_trajectory(position, velocity, spin)
+    bounce_vel_idx = detect_bounce_kinematic(vel, accel, min_acc_spike=15.0)
+    if bounce_vel_idx == None:
+        pass
 
+    # TODO : predict trajectory from bounce point up till stump positions or player (idk)
+    predicted_trajectory = compute_trajectory(position, velocity, spin)  # type:ignore
     stump_pos: List[List[StumpDetection]] = get_stump_positions(frames=frame)
     stump_tracker.update(stump_pos)
-    
-    
 
     # the output model needs to be updated
     return TrajectoryAnalysisResult(
@@ -94,14 +116,14 @@ def process_frame(frame: List[FrameInput]) -> TrajectoryAnalysisResult:
         processing_timestamp=datetime.now(timezone.utc),
         predicted_trajectory=predicted_trajectory,
         impact_location=predicted_trajectory[-1].position,
-        bounce_point=predicted_trajectory[len(predicted_trajectory) // 2].position,
+        bounce_point=ball_positions[bounce_pos],  # type: ignore
         swing_characteristics=SwingCharacteristics(
             spin_rate=spin.rate,
             spin_axis=spin.axis,
             drag_coefficient=0.45,
             bounce_coefficient=0.6,
         ),
-        stumps_hit=stumps_hit,
+        stumps_hit=stumps_hit,  # type: ignore
         decision_confidence=0.88,
         notes=["Trajectory and spin are estimated based on dummy logic."],
     )

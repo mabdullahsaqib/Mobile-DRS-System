@@ -4,7 +4,7 @@
 Refactored main.py for JSON-driven Ball and Bat Tracking Module
 
 Replaces video capture with input.json parsing, and outputs output.json.
-No CLI argument parsing; this module exposes a `main` function that the wrapper app can call.
+No CLI argument parsing; this module exposes a `ball_tracking` function that the wrapper app can call.
 """
 import json
 import cv2
@@ -17,10 +17,12 @@ from batsman_tracker import BatsmanTracker
 
 config_path = "config.json"
 
-def main(input_json_path: str, output_json_path: str, visualize: bool = False):
+def ball_tracking(input_json_path: str, output_json_path: str, visualize: bool = False):
+    # Load configuration
     with open(config_path, 'r') as cfp:
         config = json.load(cfp)
 
+    # Initialize modules with config
     processor = FrameProcessor(config.get('frame_processor', {}))
     detector = ObjectDetector(config.get('object_detector', {}))
     stump_detector = StumpDetector(config.get('stump_detector', {}))
@@ -28,12 +30,14 @@ def main(input_json_path: str, output_json_path: str, visualize: bool = False):
     batsman_tracker = BatsmanTracker(focal_length=config.get('batsman_tracker', {}).get('focal_length', 1500))
     stump_detector.update_interval = config.get('stump_detector', {}).get('update_interval', 1)
 
+    # Read input JSON
     with open(input_json_path, 'r') as f:
         data = json.load(f)
 
     all_outputs = []
     historical_positions = []
 
+    # Process each frame entry
     for entry in data.get('results', []):
         frame_id = entry.get('frameId')
         timestamp = entry.get('timestamp', None)
@@ -109,14 +113,6 @@ def main(input_json_path: str, output_json_path: str, visualize: bool = False):
         #         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
         #         cv2.putText(frame, 'Batsman', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
-        #     cv2.imshow('Detections', frame)
-        #     if cv2.waitKey(1) & 0xFF == ord('q'):
-        #         break
-
     # Save outputs
     with open(output_json_path, 'w') as ofp:
         json.dump(all_outputs, ofp, indent=2)
-
-    if visualize:
-        cv2.destroyAllWindows()
-

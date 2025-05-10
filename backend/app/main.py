@@ -1,17 +1,119 @@
-from fastapi import FastAPI
-from modules.camera.router import router as camera_router
-from modules.ball_tracking.router import router as ball_tracking_router
-from modules.edge_detection.router import router as edge_detection_router
-from modules.trajectory_analysis.service import analyze_trajectory
-from modules.decision_making.router import router as decision_making_router
-from modules.stream_analysis.router import router as stream_analysis_router
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from uuid import uuid4
+import os, json, base64, threading
+from core.InputModel import VideoAnalysisInput
+
+# from modules.ball_tracking.src.main import ball_tracking
+from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
+from modules.edge_detection.router import edge_detection
+from modules.trajectory_analysis.tests.work import run_analysis
+from modules.decision_making.FinalDecision import final_decision
+from modules.stream_analysis.stream_analysis import augmented_stream
 
 app = FastAPI()
 
-# Register all modules
-app.include_router(camera_router, prefix="/camera", tags=["Camera"])
-app.include_router(ball_tracking_router, prefix="/ball_tracking", tags=["Tracking"])
-app.include_router(edge_detection_router, prefix="/edge_detection", tags=["Edge Detection"])
-#app.include_router(trajectory_analysis_router, prefix="/trajectory_analysis", tags=["Trajectory"])
-app.include_router(decision_making_router, prefix="/decision_making", tags=["Decision"])
-app.include_router(stream_analysis_router, prefix="/stream_analysis", tags=["Stream"])
+REVIEW_DIR = "reviews/"
+os.makedirs(REVIEW_DIR, exist_ok=True)  # Ensure reviews directory exists
+
+# Background task for processing review
+def process_review(review_id: str, input_data: VideoAnalysisInput):
+    try:
+        review_path = os.path.join(REVIEW_DIR, review_id + "/")
+
+        module = 1
+
+        # Module 2: Ball Tracking
+        # ball_data = ball_tracking(
+        #     input_data.results,
+        # )
+        ball_data = ball_tracking_dummy(duration_sec=8, fps=30)
+
+        module = 2
+
+        # # Module 3: Edge Detection
+        # edge_result = edge_detection(ball_data)
+
+        module = 3
+
+        # # Module 4: Trajectory Analysis
+        # trajectory_data, hit  = run_analysis(ball_data)
+
+        module = 4
+
+        # # Module 5: Decision Making
+        # decision = final_decision(
+        #     ball_data, edge_result, hit
+        # )
+
+        module = 5
+
+        decision = "dummy_out"
+        # result_video = b"dummy_video_data"
+
+        # Module 6: Stream Analysis
+        result_video = augmented_stream(
+            input_data.results, ball_data, decision
+        )
+
+        module = 6
+
+        # Save result video
+        video_path = os.path.join(review_path, "video.txt")
+        with open(video_path, "w") as vf:
+            vf.write(result_video)
+
+        # Save decision
+        with open(os.path.join(review_path, "decision.json"), "w") as df:
+            json.dump({"decision": decision}, df)
+
+        print(f"Review {review_id} completed successfully")
+
+    except Exception as e:
+        print(f"[ERROR] Processing failed for {review_id}: {e} (module={module})")
+
+
+@app.post("/submit-review")
+async def submit_review(input_data: VideoAnalysisInput):
+    try:
+        review_id = str(uuid4())
+        review_path = os.path.join(REVIEW_DIR, review_id+ "/")
+        os.makedirs(review_path, exist_ok=True)
+
+        # Save input data
+        with open(os.path.join(review_path, "input.json"), "w") as f:
+            f.write(input_data.json())
+
+        # Start background processing
+        threading.Thread(target=process_review, args=(review_id, input_data)).start()
+
+        return {"review_id": review_id}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Submit error: {e}")
+
+
+@app.get("/get-review/{review_id}")
+async def get_review_result(review_id: str):
+    try:
+        review_path = os.path.join(REVIEW_DIR, review_id)
+        result_file = os.path.join(review_path, "decision.json")
+        video_file = os.path.join(review_path, "video.txt")
+
+        if not os.path.exists(result_file):
+            return {"status": "processing"}
+
+        with open(result_file, "r") as rf:
+            decision_data = json.load(rf)
+
+        with open(video_file, "r") as vf:
+            encoded_video = vf.read()
+
+        return {
+            "status": "complete",
+            "decision": decision_data["decision"],
+            "video": encoded_video
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Result fetch error: {e}")

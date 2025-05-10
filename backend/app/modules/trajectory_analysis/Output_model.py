@@ -1,7 +1,7 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from datetime import datetime
-from .Input_model import Position3D, Velocity3D
+from Input_model import Position3D, Velocity3D
 
 
 class PredictedPoint(BaseModel):
@@ -22,7 +22,7 @@ class TrajectoryAnalysisResult(BaseModel):
     processing_timestamp: datetime
     predicted_trajectory: List[PredictedPoint]
     impact_location: Position3D
-    bounce_point: Position3D
+    bounce_point: Optional[List[float]]
     swing_characteristics: SwingCharacteristics
     stumps_hit: bool
     decision_confidence: float

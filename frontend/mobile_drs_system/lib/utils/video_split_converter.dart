@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 class VideoFrameExtractor {
-  static const platform = MethodChannel('com.example.video_frames');
+  static const platform = MethodChannel('com.example.video_frames_extractor');
 
   static Future<List<String>> extractFrames({
     required String videoPath,
@@ -24,6 +24,24 @@ class VideoFrameExtractor {
       throw Exception("Failed to extract frames: ${e.message}");
     }
   }
+
+  static Future<List<String>> extractAudio({
+    required String videoPath,
+    required String outputDir,
+  }) async {
+    try {
+      final List<dynamic> audios = await platform.invokeMethod(
+        'extractAudio',
+        {
+          'videoPath': videoPath,
+          'outputDir': outputDir,
+        },
+      );
+      return audios.cast<String>();
+    } on PlatformException catch (e) {
+      throw Exception("Failed to extract frames: ${e.message}");
+    }
+  }
 }
 
 Future<List<Map<String, dynamic>>> processVideo(
@@ -38,12 +56,17 @@ Future<List<Map<String, dynamic>>> processVideo(
   await framesDir.create(recursive: true);
   await audioDir.create(recursive: true);
 
-  List<Map<String, dynamic>> result = [];
+  List<Map<String, dynamic>> results = [];
 
   try {
     final frames = await VideoFrameExtractor.extractFrames(
       videoPath: videoPath,
       outputDir: framesDir.path,
+    );
+
+    final audios = await VideoFrameExtractor.extractAudio(
+      videoPath: videoPath,
+      outputDir: audioDir.path,
     );
 
     for (int i = 0; i < frames.length; i++) {
@@ -56,9 +79,19 @@ Future<List<Map<String, dynamic>>> processVideo(
 
       final base64Frame = base64Encode(await frameFile.readAsBytes());
 
-      result.add({
+      String base64Audio = '';
+      if (i < audios.length && audios[i].isNotEmpty) {
+        final audioFile = File(audios[i]);
+        if (await audioFile.exists()) {
+          base64Audio = base64Encode(await audioFile.readAsBytes());
+          await audioFile.delete(); // Clean up audio file
+        }
+      }
+
+      results.add({
         'frameId': i,
         'frameData': base64Frame,
+        'audioData': base64Audio,
         'cameraRotation': {
           'x': rotations[i].x,
           'y': rotations[i].y,
@@ -80,5 +113,5 @@ Future<List<Map<String, dynamic>>> processVideo(
   await framesDir.delete(recursive: true);
   await audioDir.delete(recursive: true);
 
-  return result;
+  return results;
 }

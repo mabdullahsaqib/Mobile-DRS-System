@@ -1,5 +1,7 @@
 from typing import List, Dict, Optional
-from modules.trajectory_analysis.models.Input_model import Position3D, Velocity3D, Spin
+
+import numpy as np
+from Input_model import Position3D, Velocity3D, Spin, Acceleration3D
 
 # Constants
 GRAVITY = -9.81  # m/s²
@@ -98,25 +100,49 @@ def calculate_velocity(p1, p2, t1, t2):
         return (0, 0)
     return (dx / dt, dy / dt)
 
-
-
-
-
-
-
+min_drop = 0.04
 def detect_bounce(
     ball_positions: List[List[float]]
 ) -> Optional[int]:
-    """
-    Detects the frame index where the ball bounces.
-    Simple method: Bounce typically seen when y-coordinate increases after a decrease.
-    (In most camera setups, vertical coordinate 'y' grows downward.)
-    """
-    for i in range(1, len(ball_positions) - 1):
-        prev_y = ball_positions[i - 1][1]
-        curr_y = ball_positions[i][1]
-        next_y = ball_positions[i + 1][1]
+    arr = np.array(ball_positions)
+    y = arr[:, 1]
 
-        if curr_y > prev_y and next_y < curr_y:
+    # First differences
+    dy = np.diff(y)
+    # Identify indices where slope goes from negative to positive
+    zero_cross = np.where(np.diff(np.sign(dy)) > 0)[0] + 1
+    for idx in zero_cross:
+        # Check local minimum condition
+        if y[idx] < y[idx - 1] and y[idx] < y[idx + 1]:
+            # Check that drop from last peak is significant
+            peak_before = y[:idx].max()
+            drop = peak_before - y[idx]
+            if drop >= min_drop:
+                return idx
+    return None
+
+
+def detect_bounce_kinematic(
+    velocities: List[List[float]],
+    accelerations: List[List[float]],
+    min_acc_spike: float,
+) -> Optional[int]:
+    
+    n = len(velocities)
+    if n < 2 or len(accelerations) != n:
+        return None
+
+    for i in range(1, n):
+        vy_prev = velocities[i - 1][1]
+        vy_curr = velocities[i][1]
+        ay_curr = accelerations[i][1]
+
+        # 1) vertical velocity reversal
+        cond_vel = (vy_prev < 0.0) and (vy_curr > 0.0)
+        # 2) upward acceleration spike
+        cond_acc = ay_curr >= min_acc_spike
+
+        if cond_vel and cond_acc:
             return i
+
     return None

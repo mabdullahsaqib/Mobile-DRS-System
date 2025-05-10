@@ -8,21 +8,20 @@ plugins {
 android {
 
     namespace = "com.example.mobile_drs_system" // Make sure to set this to your app’s namespace
-    compileSdk = 35  // Use SDK 34 to match ARCore's requirements
+    compileSdk = 35  
 
     defaultConfig {
         applicationId = "com.example.mobile_drs_system"
         minSdk = 24  // Update to a higher minimum SDK version if required
-        targetSdk = 34  // Set to SDK 34, as per ARCore's requirements
+        targetSdk = 35  // Set to SDK 34, as per ARCore's requirements
         versionCode = 1
         versionName = "1.0"
     }
 
-    ndkVersion = "27.0.12077973" // Make sure to set this to match ARCore's NDK version
+    ndkVersion = "27.0.12077973" 
 
     namespace = "com.example.mobile_drs_system"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
 
 
     compileOptions {
@@ -48,4 +47,7 @@ android {
 
 flutter {
     source = "../.."
+}
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.23") // Match Kotlin version
 }

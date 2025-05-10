@@ -1,58 +1,78 @@
-from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime
-class Position(BaseModel):
-    x: float
-    y: float
-    z: float
+# from pydantic import BaseModel
+# from typing import List, Optional
+# from datetime import datetime
 
-class Velocity(BaseModel):
-    x: float
-    y: float
-    z: float
+# class Position(BaseModel):
+#     x: float
+#     y: float
+#     z: float
 
-class Spin(BaseModel):
-    axis: Position
-    rate: float
+# class Velocity(BaseModel):
+#     x: float
+#     y: float
+#     z: float
 
-class HistoricalPosition(Position):
-    timestamp: datetime
+# class Acceleration(BaseModel):
+#     x: float
+#     y: float
+#     z: float
 
-class BallData(BaseModel):
-    current_position: Position
-    velocity: Velocity
-    spin: Spin
-    historical_positions: List[HistoricalPosition]
-    confidence: float
+# class Spin(BaseModel):
+#     axis: Position
+#     rate: float
 
-class BatPosition(BaseModel):
-    handle: Position
-    edge: Position
-    tip: Position
+# class BoundingBox(BaseModel):
+#     x: int
+#     y: int
+#     width: int
+#     height: int
 
-class Orientation(BaseModel):
-    pitch: float
-    yaw: float
-    roll: float
+# class BallDetection(BaseModel):
+#     bbox: BoundingBox
+#     confidence: float
+#     center: List[int]  # [x, y] coordinates of the center
+#     radius: float
+#     z: float
 
-class BatData(BaseModel):
-    position: BatPosition
-    orientation: Orientation
-    velocity: Velocity
-    confidence: float
+# class StumpDetection(BaseModel):
+#     bbox: BoundingBox
+#     confidence: float
 
-class AudioData(BaseModel):
-    audio_id: str
-    data: str  # Base64-encoded audio string
+# class BatsmanDetection(BaseModel):
+#     bbox: BoundingBox
+#     confidence: float
 
-class Metadata(BaseModel):
-    frame_id: int
-    timestamp: datetime
-    delivery_id: str
-    match_id: str
+# class BatDetection(BaseModel):
+#     bbox: BoundingBox
+#     confidence: float
+#     z: float
 
-class EdgeDetectionInput(BaseModel):
-    metadata: Metadata
-    ball_data: BallData
-    bat_data: BatData
-    audio_data: Optional[AudioData]
+# class PadsDetection(BaseModel):
+#     bbox: BoundingBox
+#     confidence: Optional[float] = None
+
+# class Detections(BaseModel):
+#     ball: List[BallDetection]
+#     stumps: List[StumpDetection]
+#     batsman: List[BatsmanDetection]
+#     bat: List[BatDetection]
+#     pads: List[PadsDetection]
+
+# class BallTrajectory(BaseModel):
+#     current_position: Position
+#     velocity: Velocity
+#     acceleration: Acceleration
+#     spin: Spin
+#     detection_confidence: float
+#     historical_positions: List[Position]
+
+# class Metadata(BaseModel):
+#     frame_id: int
+#     timestamp: float
+#     delivery_id: str
+#     match_id: str
+
+# class EdgeDetectionInput(BaseModel):
+#     metadata: Metadata
+#     detections: Detections
+#     ball_trajectory: BallTrajectory
