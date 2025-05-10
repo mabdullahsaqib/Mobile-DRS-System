@@ -93,7 +93,7 @@ def edge_detection(frames: List[Dict], file_path:str) -> Dict:
         decision = drs_system_pipeline(i)
         if decision=='Out': 
             break
-    results["audio_decision"]="out"
+    results["audio_decision"]=decision
 
     return results
     
