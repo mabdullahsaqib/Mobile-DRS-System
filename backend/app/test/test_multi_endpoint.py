@@ -2,6 +2,7 @@ import requests
 import base64
 import json
 import time
+import os 
 
 # Base URL of your local FastAPI server
 BASE_URL = "http://localhost:8000"
@@ -57,6 +58,17 @@ for attempt in range(10):
         print("✅ Review complete!")
         print("Decision:", result_data["decision"])
         print("Video (base64, first 100 chars):", result_data["video"][:100], "...")
+        
+        # Decode and save the video as outputs/video.mp4
+        video_b64 = result_data["video"]
+        video_bytes = base64.b64decode(video_b64)
+
+        os.makedirs("outputs", exist_ok=True)
+        with open("outputs/video.mp4", "wb") as f:
+            f.write(video_bytes)
+
+        print("✅ Saved output video to outputs/video.mp4")
+
         break
     else:
         print("Still processing...")

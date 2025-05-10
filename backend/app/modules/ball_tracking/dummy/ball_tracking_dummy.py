@@ -9,7 +9,7 @@ def ball_tracking_dummy(duration_sec=15, fps=30):
 
         # Add ball for frames 100 to 140
         ball = []
-        if 100 <= i <= 140:
+        if 10 <= i <= num_frames - 10:
             ball = [{
                 "bbox": [998, 991, 31, 31],
                 "confidence": 1.0,

@@ -49,18 +49,18 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         module = 5
 
         decision = "dummy_out"
-        result_video = b"dummy_video_data"
+        # result_video = b"dummy_video_data"
 
         # Module 6: Stream Analysis
-        # result_video = augmented_stream(
-        #     input_data.results, ball_data, decision
-        # )
+        result_video = augmented_stream(
+            input_data.results, ball_data, decision
+        )
 
         module = 6
 
         # Save result video
         video_path = os.path.join(review_path, "video.txt")
-        with open(video_path, "wb") as vf:
+        with open(video_path, "w") as vf:
             vf.write(result_video)
 
         # Save decision
@@ -106,8 +106,8 @@ async def get_review_result(review_id: str):
         with open(result_file, "r") as rf:
             decision_data = json.load(rf)
 
-        with open(video_file, "rb") as vf:
-            encoded_video = base64.b64encode(vf.read()).decode("utf-8")
+        with open(video_file, "r") as vf:
+            encoded_video = vf.read()
 
         return {
             "status": "complete",
