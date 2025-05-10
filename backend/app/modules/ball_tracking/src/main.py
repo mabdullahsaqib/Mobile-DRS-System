@@ -1,54 +1,55 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Refactored main.py for JSON-driven Ball and Bat Tracking Module
 
-import cv2
+Replaces video capture with input.json parsing, and outputs output.json.
+No CLI argument parsing; this module exposes a `ball_tracking` function that the wrapper app can call.
+"""
 import json
-import argparse
+import cv2
+from typing import Optional
 from frame_processor import FrameProcessor
 from object_detector import ObjectDetector
 from stump_detector import StumpDetector
 from ball_tracker import BallTracker
 from batsman_tracker import BatsmanTracker
-from backend.app.modules.ball_tracking.src.Mod2output import get_output_data
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Ball and Object Tracker Module")
-    parser.add_argument('--config', type=str, default='config.json', help='Path to config file')
-    parser.add_argument('--input', type=str, default='v1.mp4', help='Input video path')
-    parser.add_argument('--output', type=str, default='output.json', help='Output JSON path')
-    parser.add_argument('--visualize', action='store_true', help='Visualize detections')
-    return parser.parse_args()
+config_path = "config.json"
 
-def ball_tracking():
-    args = parse_arguments()
+def ball_tracking(input_json_path: str, output_json_path: str, visualize: bool = False):
+    # Load configuration
+    with open(config_path, 'r') as cfp:
+        config = json.load(cfp)
 
-    # Load config
-    with open(args.config) as f:
-        config = json.load(f)
-
-    # Initialize processors
+    # Initialize modules with config
     processor = FrameProcessor(config.get('frame_processor', {}))
     detector = ObjectDetector(config.get('object_detector', {}))
     stump_detector = StumpDetector(config.get('stump_detector', {}))
     ball_tracker = BallTracker(config.get('ball_tracker', {}))
-    batsman_tracker = BatsmanTracker(focal_length=1500) 
+    batsman_tracker = BatsmanTracker(focal_length=config.get('batsman_tracker', {}).get('focal_length', 1500))
+    stump_detector.update_interval = config.get('stump_detector', {}).get('update_interval', 1)
 
-    stump_detector.update_interval = 1
-    cap = cv2.VideoCapture(args.input)
-    frame_id = 0
+    # Read input JSON
+    with open(input_json_path, 'r') as f:
+        data = json.load(f)
+
     all_outputs = []
     historical_positions = []
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    # Process each frame entry
+    for entry in data.get('results', []):
+        frame_id = entry.get('frameId')
+        timestamp = entry.get('timestamp', None)
 
-        timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-        processed_frame = processor.preprocess_frame(frame)
-        detections = detector.detect(processed_frame)
+        # Decode and preprocess frame
+        frame_b64 = entry.get('frameData')
+        frame = processor.decode_frame({"data": frame_b64})
 
-        # Merge stump boxes every frame
+        # Detect objects
+        detections = detector.detect(frame)
+
+        # Detect stumps and merge into detections
         stumps_data = stump_detector.detect(frame, detections, frame_id)
         if stumps_data:
             detections['stumps'] = [{
@@ -56,69 +57,62 @@ def ball_tracking():
                     stumps_data['bbox']['x'],
                     stumps_data['bbox']['y'],
                     stumps_data['bbox']['w'],
-                    stumps_data['bbox']['h']
+                    stumps_data['bbox']['h'],
                 ],
                 'confidence': stumps_data['detection_confidence']
             }]
         else:
             detections['stumps'] = []
 
-        # Track ball and compute trajectory
-        trajectory_data = ball_tracker.track(processed_frame, detections, historical_positions)
+        # Track ball
+        trajectory_data = ball_tracker.track(frame, detections, historical_positions)
         if trajectory_data:
             historical_positions.append(trajectory_data['current_position'])
-            
-        batsman_tracker.update(detections["batsman"], frame.shape, frame_id)
 
+        # Track batsman
+        batsman_tracker.update(detections.get('batsman', []), frame.shape, frame_id)
 
-        # Ensure missing keys are filled
-        detections.setdefault("ball", [])
-        detections.setdefault("batsman", [])
-        detections.setdefault("bat", [])
-        detections.setdefault("pads", [])
+        # Ensure all keys exist
+        for key in ['ball', 'batsman', 'bat', 'pads']:
+            detections.setdefault(key, [])
 
-        # Build output dict
+        # Build output record
         output = {
-            "frame_id": frame_id,
-            "timestamp": timestamp,
-            "detections": {
-                "ball": detections["ball"],
-                "stumps": detections["stumps"],
-                "batsman": detections["batsman"],
-                "bat": detections["bat"],
-                "pads": detections["pads"]
+            'frame_id': frame_id,
+            'timestamp': timestamp,
+            'detections': {
+                'ball': detections['ball'],
+                'stumps': detections['stumps'],
+                'batsman': detections['batsman'],
+                'bat': detections['bat'],
+                'pads': detections['pads'],
             },
-            "ball_trajectory": trajectory_data if trajectory_data else {},
-            "batsman_position": batsman_tracker.get_position() or {}
-
+            'ball_trajectory': trajectory_data or {},
+            'batsman_position': batsman_tracker.get_position() or {}
         }
+
+        # Optional: preserve camera metadata
+        if 'cameraPosition' in entry:
+            output['camera_position'] = entry['cameraPosition']
+        if 'cameraRotation' in entry:
+            output['camera_rotation'] = entry['cameraRotation']
+
         all_outputs.append(output)
+        
+        # if visualize:
+        #     for obj in detections['ball']:
+        #         x, y, w, h = obj['bbox']
+        #         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
+        #         cv2.putText(frame, 'Ball', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+        #     for obj in detections['stumps']:
+        #         x, y, w, h = obj['bbox']
+        #         cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+        #         cv2.putText(frame, 'Stumps', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        #     for obj in detections['batsman']:
+        #         x, y, w, h = obj['bbox']
+        #         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
+        #         cv2.putText(frame, 'Batsman', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
-        if args.visualize:
-            # Visualize detections
-            for obj in detections["ball"]:
-                x, y, w, h = obj["bbox"]
-                cv2.rectangle(processed_frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
-                cv2.putText(processed_frame, 'Ball', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-            for obj in detections["stumps"]:
-                x, y, w, h = obj["bbox"]
-                cv2.rectangle(processed_frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                cv2.putText(processed_frame, 'Stumps', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-            for obj in detections["batsman"]:
-                x, y, w, h = obj["bbox"]
-                cv2.rectangle(processed_frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
-                cv2.putText(processed_frame, 'Batsman', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-
-            
-            cv2.imshow("Detections", processed_frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-        frame_id += 1
-
-    cap.release()
-    cv2.destroyAllWindows()
-
-    # Save output
-    with open(args.output, 'w') as f:
-        json.dump(all_outputs, f, indent=2)
+    # Save outputs
+    with open(output_json_path, 'w') as ofp:
+        json.dump(all_outputs, ofp, indent=2)
