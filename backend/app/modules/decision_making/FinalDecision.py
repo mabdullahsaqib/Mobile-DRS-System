@@ -64,7 +64,7 @@ def final_decision(module2_data, module3_data, module4_data):
         return {"Out": False, "Reason": "Not Inline"}
     elif edge_detected["edge_detected"]:
         return {"Out": False, "Reason": "Bat Edge Detected"}
-    elif not will_hit_stumps["will_hit_stumps"]:
+    elif not will_hit_stumps:
         return {"Out": False, "Reason": "Missing Wicket"}
     else:
         return {"Out": True, "Reason": "Out"}
