@@ -24,7 +24,7 @@ class FrameProcessor:
           - reduce_noise: bool
         """
         config = config or {}
-        self.target_size = config.get("target_size", (640, 480))
+        self.target_size = config.get("target_size", [640, 480])
         self.apply_contrast = config.get("enhance_contrast", True)
         self.apply_noise = config.get("reduce_noise", True)
         if self.apply_contrast:

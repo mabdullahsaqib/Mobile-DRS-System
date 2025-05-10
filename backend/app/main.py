@@ -4,8 +4,8 @@ from uuid import uuid4
 import os, json, base64, threading
 from core.InputModel import VideoAnalysisInput
 
-# from modules.ball_tracking.src.main import ball_tracking
-from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
+from modules.ball_tracking.src.main import ball_tracking
+# from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
 from modules.edge_detection.router import edge_detection
 from modules.trajectory_analysis.tests.work import run_analysis
 from modules.decision_making.FinalDecision import final_decision
@@ -17,43 +17,52 @@ REVIEW_DIR = "reviews/"
 os.makedirs(REVIEW_DIR, exist_ok=True)  # Ensure reviews directory exists
 
 # Background task for processing review
-def process_review(review_id: str, input_data: VideoAnalysisInput):
+def process_review(review_id: str, input_path):
     try:
         review_path = os.path.join(REVIEW_DIR, review_id + "/")
+        ball_tracking_output_path = os.path.join(review_path, "ball_tracking_output.json")
 
         module = 1
 
         # Module 2: Ball Tracking
-        # ball_data = ball_tracking(
-        #     input_data.results,
-        # )
-        ball_data = ball_tracking_dummy(duration_sec=8, fps=30)
+        ball_data = ball_tracking(
+            input_path, ball_tracking_output_path
+        )
+        # ball_data = ball_tracking_dummy(duration_sec=8, fps=30)
 
         module = 2
 
-        # # Module 3: Edge Detection
-        # edge_result = edge_detection(ball_data)
+        # Module 3: Edge Detection
+        # edge_result = edge_detection(input_path, ball_data)
 
         module = 3
 
-        # # Module 4: Trajectory Analysis
-        # trajectory_data, hit  = run_analysis(ball_data)
+        # Module 4: Trajectory Analysis
+        trajectory_data, hit  = run_analysis(ball_tracking_output_path)
 
         module = 4
 
-        # # Module 5: Decision Making
+        # Module 5: Decision Making
         # decision = final_decision(
         #     ball_data, edge_result, hit
         # )
+        decision = final_decision(
+            ball_data, {
+        "is_edge_detected": True,
+        "min_distance": 0.5,
+        "ball_edge_point": [100, 200],
+        "nearest_bat_point": [150, 250]
+    }, hit
+        )
 
         module = 5
 
-        decision = "dummy_out"
+        # decision = "dummy_out"
         # result_video = b"dummy_video_data"
 
         # Module 6: Stream Analysis
         result_video = augmented_stream(
-            input_data.results, ball_data, decision
+            input_path, ball_data, decision
         )
 
         module = 6
@@ -81,11 +90,12 @@ async def submit_review(input_data: VideoAnalysisInput):
         os.makedirs(review_path, exist_ok=True)
 
         # Save input data
-        with open(os.path.join(review_path, "input.json"), "w") as f:
+        input_path = os.path.join(review_path, "input.json")
+        with open(input_path, "w") as f:
             f.write(input_data.json())
 
         # Start background processing
-        threading.Thread(target=process_review, args=(review_id, input_data)).start()
+        threading.Thread(target=process_review, args=(review_id, input_path)).start()
 
         return {"review_id": review_id}
     

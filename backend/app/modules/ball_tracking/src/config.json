@@ -5,7 +5,7 @@
     "focal_length_pixels": 1500
   },
   "frame_processor": {
-    "target_size": null,
+    "target_size": [640, 480],
     "enhance_contrast": true,
     "reduce_noise": true
   },
