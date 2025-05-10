@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.io.wavfile as wav
-from modules.edge_detection.models.frame_model import EdgeDetectionInput
+
 from modules.edge_detection.controllers.audio_detectionwav import decodebase64_convert_to_wav,denoise_audio
 
 def load_audio(filename):
