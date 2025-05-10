@@ -7,7 +7,7 @@ from tqdm import tqdm
 class StreamOverlay:
     def __init__(self, config: dict):
         self.config = config
-        self.validate_config()  # ensure required configuration is provided
+        self.validate_config()  # ensure  configuration is provided
                 # load bg image (front-view cricket pitch)
         self.bg = cv2.imread(self.config['bg_image_path'])
         if self.bg is None:
@@ -30,7 +30,7 @@ class StreamOverlay:
                 raise ValueError(f"Missing config key: {key}")
 
     def draw_stumps(self, frame: np.ndarray) -> np.ndarray:
-             # draw  stumps at specified positions
+             # draw  wickets at specified positions
         for x, y in self.config['stumps_pos']:
             cv2.rectangle(frame, (x - 2, y), (x + 2, y + 40), (200, 180, 150), -1)
             cv2.rectangle(frame, (x - 8, y - 3), (x + 8, y), (255, 255, 255), -1)
@@ -51,7 +51,7 @@ class StreamOverlay:
 
     def draw_impact_marker(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
         nt) -> np.ndarray:
-        # draw impact circle and label if it's the impact frame
+        # draw impact  and label if it's the impact frame
         if 'impact_frame' in self.config and frame_id == self.config['impact_frame']:
             if 'impact_pos' in self.config:
                 pos = self.config['impact_pos']
@@ -62,7 +62,7 @@ class StreamOverlay:
         return frame
 
     def draw_predicted_path(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
-            # draw predicted ball trajectory after impact
+            # draw predict ball trajectory after impact
         if 'predicted_path' in self.config and frame_id >= self.config.get('impact_frame', 0):
             for i in range(len(self.config['predicted_path']) - 1):
                 if i % 2 == 0:
@@ -89,7 +89,7 @@ class StreamOverlay:
         return frame
 
     def draw_ultraedge(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
-         # show UltraEdge waveform for frames within a certain range
+         # show UltraEdge wave for frames within a certain range
         if not self.config.get('edge_detected', False):
             return frame
         start = self.config.get('ultraedge_start_frame', 45)
@@ -146,7 +146,7 @@ class StreamOverlay:
 
 
 if __name__ == "__main__":
-     # dummy input to test the overlay functionality
+     # dummy input to test the overlay function
     sample_config = {
         'output_frame_dir': "output/augmented_frames",
         'output_video_path': "output/overlay_video.mp4",
