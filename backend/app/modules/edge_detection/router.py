@@ -1,4 +1,6 @@
 import math
+import json
+from modules.edge_detection.controllers.audio_detection import drs_system_pipeline
 
 def calculate_distance(p1, p2):
     return math.sqrt(
@@ -7,7 +9,21 @@ def calculate_distance(p1, p2):
         (p1[2] - p2[2]) ** 2
     )
 
-def edge_detection(data: dict) -> dict:
+def get_audio_base64_list(input_json_path, skip_empty=True):
+    with open(input_json_path, 'r') as f:
+        data = json.load(f)
+
+    audio_list = []
+
+    for frame in data.get("results", []):
+        audio_b64 = frame.get("audioData", "")
+        if skip_empty and not audio_b64:
+            continue
+        audio_list.append(audio_b64)
+
+    return audio_list
+
+def edge_detection(data: dict, file_path: str) -> dict:
     if not data['detections']['ball'] or not data['detections']['bat']:
         return {"is_edge_detected": False, "reason": "No ball or bat detected"}
 
@@ -39,12 +55,17 @@ def edge_detection(data: dict) -> dict:
 
     threshold = bat_bbox['width'] // 2
     is_edge = min_distance < threshold
-
+    audio_chunks = get_audio_base64_list(file_path)
+    for i in audio_chunks:
+        decision = drs_system_pipeline(i)
+        if decision=='Out': 
+            break
     return {
         "is_edge_detected": is_edge,
         "min_distance": min_distance,
         "ball_edge_point": ball_edge_point,
-        "nearest_bat_point": nearest_bat_point
+        "nearest_bat_point": nearest_bat_point,
+        "decision": decision
     }
 
 def sample_bat_edge_points(bbox: dict, step=1):
@@ -67,7 +88,7 @@ def sample_bat_edge_points(bbox: dict, step=1):
     return points
 
 
-# if __name__ == "__main__":
+# if _name_ == "_main_":
 #     sample_data = {
 #         "detections": {
 #             "ball": [{
