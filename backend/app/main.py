@@ -27,7 +27,7 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         # ball_data = ball_tracking(
         #     input_data.results,
         # )
-        ball_data = ball_tracking_dummy(duration_sec=15, fps=30)
+        ball_data = ball_tracking_dummy(duration_sec=8, fps=30)
 
         module = 2
 
