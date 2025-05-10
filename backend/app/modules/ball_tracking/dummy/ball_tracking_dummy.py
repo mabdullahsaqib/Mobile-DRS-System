@@ -5,45 +5,57 @@ def ball_tracking_dummy(duration_sec=15, fps=30):
     output = []
 
     for i in range(num_frames):
-        timestamp = i / fps
+        timestamp = round(i / fps, 6)
 
-        # Every 30th frame has the ball
+        # Add ball for frames 100 to 140
         ball = []
-        if i >= 90 and i <= 120:
+        if 100 <= i <= 140:
             ball = [{
-                "bbox": [random.randint(950, 1000), random.randint(950, 1000), 30, 30],
+                "bbox": [998, 991, 31, 31],
                 "confidence": 1.0,
                 "center": [1014, 1007],
                 "radius": 15,
-                "z": round(1.2 + (i - 90) * 0.01, 2)
+                "z": round(3.0 + (i - 100) * 0.02, 2)
             }]
 
-        # Simple static stumps
+        # Static stumps
         stumps = [{
-            "bbox": [969, 491, 93, 262],
+            "bbox": [967, 501, 99, 265],
             "confidence": 1.0
         }]
 
-        # Dummy batsman with low confidence every 20th frame
+        # Every 20th frame has batsman and bat
         batsman = []
+        bat = []
         if i % 20 == 0:
+            confidence = round(random.uniform(0.5, 0.6), 3)
+            bbox = [871, 162, 305, 609]
             batsman = [{
-                "bbox": [850, 150, 320, 630],
-                "confidence": round(random.uniform(0.5, 0.6), 3)
+                "bbox": bbox,
+                "confidence": confidence
+            }]
+            bat = [{
+                "bbox": bbox,
+                "confidence": confidence,
+                "z": 3.46
             }]
 
-        frame_data = {
+        frame = {
             "frame_id": i,
-            "timestamp": round(timestamp, 6),
+            "timestamp": timestamp,
             "detections": {
                 "ball": ball,
                 "stumps": stumps,
                 "batsman": batsman,
-                "bat": [],
+                "bat": bat,
                 "pads": []
             },
             "ball_trajectory": {
-                "current_position": {"x": 0.075, "y": -1.15 + i * -0.01, "z": 1.33},
+                "current_position": {
+                    "x": 0.075,
+                    "y": round(-1.15 + i * -0.01, 3),
+                    "z": 1.333
+                },
                 "velocity": {"x": 0.0, "y": 0.0, "z": 0.0},
                 "acceleration": {"x": 0.0, "y": -9.8, "z": 0.0},
                 "spin": {
@@ -55,6 +67,6 @@ def ball_tracking_dummy(duration_sec=15, fps=30):
             }
         }
 
-        output.append(frame_data)
+        output.append(frame)
 
     return output

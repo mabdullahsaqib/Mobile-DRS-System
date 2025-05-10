@@ -303,8 +303,8 @@ def did_hit_stumps(trajectory, stumps_bbox, ball_radius=0.07):
 
 # if __name__ == "__main__":
 #     main()
-def run_analysis(json_path: str) -> Tuple[list[dict[str, float]], bool]:
-    frames = json.loads(Path(json_path).read_text())
+def run_analysis(ball_data) -> Tuple[list[dict[str, float]], bool]:
+    frames = ball_data
 
     coords = extract_ball_positions(frames)
     #for frame_id, x, y, z in coords:

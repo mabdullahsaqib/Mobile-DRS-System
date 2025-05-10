@@ -23,7 +23,13 @@
           "confidence": 0.536
         }
       ],
-      "bat": [],
+      "bat": [
+        {
+          "bbox": [871, 162, 305, 609],
+          "confidence": 0.536,
+           "z" : 3.46
+        }
+      ],
       "pads": []
     },
     "ball_trajectory": {

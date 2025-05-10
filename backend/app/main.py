@@ -6,7 +6,7 @@ from core.InputModel import VideoAnalysisInput
 
 from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
 from modules.edge_detection.router import edge_detection
-# from modules.trajectory_analysis.src import trajectory_analysis
+from modules.trajectory_analysis.tests.work import run_analysis
 from modules.decision_making.FinalDecision import final_decision
 from modules.stream_analysis.stream_analysis import augmented_stream
 
@@ -22,19 +22,23 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
 
         # Module 2: Ball Tracking
         ball_data = ball_tracking_dummy(duration_sec=15, fps=30)
+        with open("dummy_module2_output.json", "w") as f:
+            json.dump(ball_data, f, indent=2)
 
         # Module 3: Edge Detection
         edge_result = edge_detection(ball_data)
 
-        # # Module 4: Trajectory Analysis
-        # trajectory_data = trajectory_analysis(edge_result)
+        # Module 4: Trajectory Analysis
+        trajectory_data, hit  = run_analysis(ball_data)
 
-        # # Module 5: Decision Making
-        # final_decision = decision_making(trajectory_data)
+        # Module 5: Decision Making
+        decision = final_decision(
+            ball_data, edge_result, hit
+        )
 
-        # # Module 6: Stream Analysis
+        # Module 6: Stream Analysis
         result_video = augmented_stream(
-            input_data.results, ball_data, final_decision
+            input_data.results, ball_data, decision
         )
 
         # Save result video
@@ -42,23 +46,11 @@ def process_review(review_id: str, input_data: VideoAnalysisInput):
         with open(video_path, "wb") as vf:
             vf.write(result_video)
 
-        # # Save decision
-        # with open(os.path.join(review_path, "decision.json"), "w") as df:
-        #     json.dump({"decision": final_decision}, df)
-
-        print(f"Review {review_id} completed successfully")
-
-        # Save result video
-        # video_path = os.path.join(review_path, "result.mp4")
-        # dummy_video_data = base64.b64encode(b"dummy_video_content").decode("utf-8")
-        # with open(video_path, "wb") as vf:
-        #     vf.write(base64.b64decode(dummy_video_data))
-
         # Save decision
         with open(os.path.join(review_path, "decision.json"), "w") as df:
-            json.dump({"decision": "dummy_decision"}, df)
+            json.dump({"decision": decision}, df)
 
-        print(f"[DEBUG] Output video base64 preview: {ball_data[:100]}...")
+        print(f"Review {review_id} completed successfully")
 
     except Exception as e:
         print(f"[ERROR] Processing failed for {review_id}: {e}")
