@@ -44,8 +44,8 @@ def drs_system_pipeline(audio_data_base64) -> str:
 
     audio_base64 = audio_data_base64
     # Step 1: Decode and convert to WAV
-    raw_wav_path = "../../../assets/raw_audio.wav"
-    cleaned_wav_path = "../../../assets/denoised_audio.wav"
+    raw_wav_path = "assets/raw_audio.wav"
+    cleaned_wav_path = "assets/denoised_audio.wav"
     decodebase64_pcm_to_wav(audio_base64, raw_wav_path)
 
     # Step 2: Denoise
