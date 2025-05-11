@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 import base64
 import io
+import json
 import tempfile
 
 def project_3d_to_2d(x, y, z, frame_width=1280, frame_height=720):
@@ -19,9 +20,13 @@ def stream_analysis(frames, ball_positions, decision_data):
     def get_field(obj, key):
         return getattr(obj, key, None) if not isinstance(obj, dict) else obj.get(key)
 
+
     processed_frames = []
     for frame in frames:
         frame_data = get_field(frame, "frameData")
+        if frame_data is None:
+            continue
+        
         frame_bytes = base64.b64decode(frame_data)
         nparr = np.frombuffer(frame_bytes, np.uint8)
         decoded = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -36,8 +41,19 @@ def stream_analysis(frames, ball_positions, decision_data):
     total_frames = len(processed_frames)
     accumulated_positions = []
 
-    y_values = [pos["ball_trajectory"]["current_position"]["y"] for pos in ball_positions]
+    y_values = []
+    for pos in ball_positions:
+        try:
+            y_value = pos["ball_trajectory"]["current_position"]["y"]
+            y_values.append(y_value)
+        except (KeyError, TypeError):
+            continue
+        
+    if not y_values:
+        raise ValueError("No valid y-coordinates found in ball position data")
+    
     y_min, y_max = min(y_values), max(y_values)
+    
     if y_max == y_min:
         y_max = y_min + 1
 
@@ -119,9 +135,20 @@ def stream_analysis(frames, ball_positions, decision_data):
 
     return encoded_video
 
-def augmented_stream(frames, ball_positions, decision_data):
+def augmented_stream(frames_path, ball_positions, decision_data):
     try:
+        frames = []
+        with open(frames_path, "r") as f:
+            frames = json.load(f)
+
+        print(f"[INFO] Loaded {len(frames)} frames from {frames_path}")
+
+        if not frames:
+            raise ValueError("No frames found in the input data")
+
+        # Call the stream_analysis function
         return stream_analysis(frames, ball_positions, decision_data)
+
     except Exception as e:
         print(f"[ERROR] stream_analysis failed: {e}")
         print("Hints:")

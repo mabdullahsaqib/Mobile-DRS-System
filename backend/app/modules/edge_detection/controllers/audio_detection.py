@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io.wavfile as wav
-from modules.edge_detection.models.frame_model import EdgeDetectionInput
-from modules.edge_detection.controllers.audio_detectionwav import decodebase64_convert_to_wav,denoise_audio
+
+from modules.edge_detection.controllers.audio_detectionwav import decodebase64_pcm_to_wav,denoise_audio
 
 def load_audio(filename):
     sample_rate, data = wav.read(filename)
@@ -40,12 +40,13 @@ def make_decision(spikes):
     else:
         return "Not Out"
 
-def drs_system_pipeline(data: EdgeDetectionInput) -> dict:
-    audio_base64 = data.audio_data.data
+def drs_system_pipeline(audio_data_base64) -> str:
+
+    audio_base64 = audio_data_base64
     # Step 1: Decode and convert to WAV
-    raw_wav_path = "raw_audio.wav"
-    cleaned_wav_path = "denoised_audio.wav"
-    decodebase64_convert_to_wav(audio_base64, raw_wav_path)
+    raw_wav_path = "../../../assets/raw_audio.wav"
+    cleaned_wav_path = "../../../assets/denoised_audio.wav"
+    decodebase64_pcm_to_wav(audio_base64, raw_wav_path)
 
     # Step 2: Denoise
     denoise_audio(raw_wav_path, cleaned_wav_path)

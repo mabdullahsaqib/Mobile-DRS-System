@@ -49,15 +49,12 @@ def check_ball_inline(data):
     return {"inline": False}
 
 def bat_edge_detect(data):
-    return {"edge_detected": data['edge_detected']}
-
-def wicket_impact(data):
-    return {"will_hit_stumps": data['will_hit_stumps']}
+    return {"edge_detected": data['is_edge_detected']}
 
 def final_decision(module2_data, module3_data, module4_data):
     inline = check_ball_inline(module2_data)
     edge_detected = bat_edge_detect(module3_data)
-    will_hit_stumps = wicket_impact(module4_data)
+    will_hit_stumps = module4_data
 
     print("Inline:", inline)
     print("Edge Detected:", edge_detected)
@@ -67,7 +64,7 @@ def final_decision(module2_data, module3_data, module4_data):
         return {"Out": False, "Reason": "Not Inline"}
     elif edge_detected["edge_detected"]:
         return {"Out": False, "Reason": "Bat Edge Detected"}
-    elif not will_hit_stumps["will_hit_stumps"]:
+    elif not will_hit_stumps:
         return {"Out": False, "Reason": "Missing Wicket"}
     else:
         return {"Out": True, "Reason": "Out"}

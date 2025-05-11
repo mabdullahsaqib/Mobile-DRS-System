@@ -26,7 +26,7 @@ def get_dummy_base64(data: str) -> str:
 
 # Frame data
 
-with open("../reviews/0b425b5d-4203-4f3a-ae56-52d5e51130f0/input.json", "r") as f:
+with open("../reviews/test/input.json", "r") as f:
     payload = f.read()
 
 
