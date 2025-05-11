@@ -16,6 +16,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       title: 'Mobile DRS App',
       scaffoldMessengerKey: scaffoldMessengerKey,
+      initialRoute: AppRoutes.splash,
       routes: AppRoutes.routes,
       onGenerateRoute: AppRoutes.onGenerateRoute,
       theme: ThemeData(

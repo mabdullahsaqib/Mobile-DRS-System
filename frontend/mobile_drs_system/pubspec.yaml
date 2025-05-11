@@ -33,4 +33,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/splash_bg.png
+    - assets/splash_bg.jpg
+    - assets/black.jpg
