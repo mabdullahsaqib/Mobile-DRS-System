@@ -7,17 +7,88 @@
 Object Detector Module
 
 This module is responsible for detecting cricket-related objects in video frames,
-including the ball, stumps, batsman, and bat. It uses a combination of traditional
-computer vision techniques and deep learning approaches.
+including the ball, stumps, batsman, and bat.
 
-Team Member Responsibilities:
-----------------------------
-Member 3: Object detection implementation, model training/integration, and detection optimization
 """
 
 import cv2
 import numpy as np
+import tensorflow as tf
+import tensorflow_hub as hub
+import time
+import mediapipe as mp
 from typing import Dict, List, Any, Tuple
+
+
+class BlazePoseDetector:
+    def __init__(self):
+        self.mp_pose = mp.solutions.pose
+        self.pose = self.mp_pose.Pose(
+            static_image_mode=False,
+            model_complexity=1,  # Try 0 for faster performance
+            smooth_landmarks=True,  # Add this for smoother results
+            enable_segmentation=False,
+            min_detection_confidence=0.7, 
+            min_tracking_confidence=0.7
+        )
+        
+        # Keypoints (MediaPipe returns 33 points)
+        self.keypointsMapping = [
+            "Nose", "Left Eye", "Right Eye", "Left Ear", "Right Ear",
+            "Left Shoulder", "Right Shoulder", "Left Elbow", "Right Elbow",
+            "Left Wrist", "Right Wrist", "Left Hip", "Right Hip",
+            "Left Knee", "Right Knee", "Left Ankle", "Right Ankle"
+        ]  # Only using 17 keypoints (similar to OpenPose for compatibility)
+
+    def detect(self, frame: np.ndarray) -> List[Dict[str, Any]]:
+        results = []
+        frame_height, frame_width = frame.shape[:2]  # Get dimensions first
+        
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame.flags.writeable = False  # Improves performance
+        
+        pose_results = self.pose.process(rgb_frame)
+        
+        if pose_results.pose_landmarks:
+            detection = {}
+            for idx, landmark in enumerate(pose_results.pose_landmarks.landmark):
+                if idx < len(self.keypointsMapping):
+                    # Use frame dimensions for proper projection
+                    x = int(landmark.x * frame_width)
+                    y = int(landmark.y * frame_height)
+                    detection[self.keypointsMapping[idx]] = (x, y)
+            results.append(detection)
+        
+        return results
+
+    def draw_pose(self, frame: np.ndarray, detections: List[Dict[str, Any]]):
+        for detection in detections:
+            # Draw keypoints
+            for (x, y) in detection.values():
+                cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+            
+            # Draw skeleton (simplified connections)
+            connections = [
+                ("Left Shoulder", "Right Shoulder"),
+                ("Left Shoulder", "Left Elbow"),
+                ("Left Elbow", "Left Wrist"),
+                ("Right Shoulder", "Right Elbow"),
+                ("Right Elbow", "Right Wrist"),
+                ("Left Shoulder", "Left Hip"),
+                ("Right Shoulder", "Right Hip"),
+                ("Left Hip", "Right Hip"),
+                ("Left Hip", "Left Knee"),
+                ("Left Knee", "Left Ankle"),
+                ("Right Hip", "Right Knee"),
+                ("Right Knee", "Right Ankle")
+            ]
+            
+            for (partA, partB) in connections:
+                if partA in detection and partB in detection:
+                    cv2.line(frame, detection[partA], detection[partB], (255, 0, 0), 2)
+        
+        return frame
+    
 
 class ObjectDetector:
     """
@@ -52,6 +123,8 @@ class ObjectDetector:
         
         # Initialize traditional CV parameters
         self._init_traditional_cv_params()
+        self.pose_detector: BlazePoseDetector
+        self.pose_detector =BlazePoseDetector()  # This should be a class that runs the pose detection code
     
     
        
@@ -83,133 +156,74 @@ class ObjectDetector:
         self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
     
     def detect(self, frame: np.ndarray) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        Detect objects in the frame.
-        
-        Args:
-            frame: Input frame as numpy array
-            
-        Returns:
-            Dictionary containing detection results for each object type
-        """
-        results = {
-            "ball": [],
-            "stumps": [],
-            "batsman": [],
-            "bat": []
-        }
-        
-        # Choose detection method based on configuration
+        results = {"ball": [], "stumps": [], "batsman": [], "bat": []}
+
+        # Detect objects
         self._detect_with_traditional_cv(frame, results)
 
+        # Detect pose (body parts) for batsman
+        pose_results = self.pose_detector.detect(frame)
+        
+        # Add pose data to batsman detections
+        for detection in results["batsman"]:
+            detection["pose"] = pose_results
+        
         return results
     
     def _detect_with_traditional_cv(self, frame: np.ndarray, results: Dict[str, List[Dict[str, Any]]]):
-
-        
         ball_detections = self._detect_ball_traditional(frame)
         results["ball"] = ball_detections
         
-        # Detect stumps 
         stump_detections = self._detect_stumps_traditional(frame)
-       
         results["stumps"] = stump_detections
-        batsman_detections = self._detect_batsman_traditional(frame)
-
-        #         # Detect batsman
-        # batsman_detections = self._detect_batsman_traditional(frame)
-        # results["batsman"] = batsman_detections
-
-        # Detect bat using region around batsman
-        bat_detections = self._detect_bat_traditional(frame, batsman_detections)
-        results["bat"] = bat_detections
-
         
-        frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-        rects, weights = self.hog.detectMultiScale(
-            frame_resized,
-            winStride=(8, 8),
-            padding=(8, 8),
-            scale=1.05
-        )
-
-        detections = []
-        frame_width = frame.shape[1]
-
-        for (x, y, w, h), weight in zip(rects, weights):
-            if weight >= self.confidence_threshold:
-               
-                x, y, w, h = int(x * 2), int(y * 2), int(w * 2), int(h * 2)
-                center_x = x + w // 2
-
-            
-                if 0.2 * frame_width < center_x < 0.8 * frame_width:
-                   
-                    shrink_factor = 0.7
-                    new_w = int(w * shrink_factor)
-                    new_h = int(h * shrink_factor)
-                    new_x = x + (w - new_w) // 2
-                    new_y = y + (h - new_h) // 2
-
-                    detections.append({
-                        "bbox": (new_x, new_y, new_w, new_h),
-                        "confidence": float(weight)
-                    })
-        results["batsman"] = detections
+        batsman_detections = self._detect_batsman_traditional(frame)
+        results["batsman"] = batsman_detections
          
-    def _detect_batsman_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
-        """
-        Detect batsman using HOG+SVM person detector, with stricter filters.
-        Returns:
-            List of detections with bbox, confidence, z
-        """
-        confidence_thresh = max(0.75, self.confidence_threshold)
-        min_width, min_height = 40, 100
-        min_aspect_ratio = 1.5
+    def _detect_batsman_traditional(self, frame):
+        """Detects batsmen using pose estimation with improved filtering"""
+        try:
+            pose_detections = self.pose_detector.detect(frame)
+            
+            if not pose_detections:
+                return []
+            
+            # Filter for most central batsman (cricket-specific optimization)
+            frame_center = (frame.shape[1]//2, frame.shape[0]//2)
+            best_detection = min(
+                pose_detections,
+                key=lambda det: self._distance_to_center(det, frame_center)
+            )
+            
+            # Additional cricket-specific validation
+            if not self._is_valid_batsman(best_detection):
+                return []
+            
+            return [{
+                "keypoints": best_detection,
+                "pose": best_detection,
+                "confidence": self._calculate_pose_confidence(best_detection)
+            }]
+        
+        except Exception as e:
+            print(f"Batsman detection error: {e}")
+            return []
+    def _distance_to_center(self, detection, center):
+        """Calculate distance of pose to image center"""
+        neck = detection.get("Neck")
+        if neck:
+            return ((neck[0]-center[0])**2 + (neck[1]-center[1])**2)**0.5
+        return float('inf')
 
-        frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-        rects, weights = self.hog.detectMultiScale(
-            frame_resized,
-            winStride=(8, 8),
-            padding=(8, 8),
-            scale=1.05
-        )
+    def _is_valid_batsman(self, detection):
+        """Cricket-specific validation of pose"""
+        required_parts = {"Neck", "RShoulder", "LShoulder", "RHip", "LHip"}
+        return all(part in detection for part in required_parts)
 
-        detections = []
-        frame_width = frame.shape[1]
-
-        for (x, y, w, h), weight in zip(rects, weights):
-            if weight < confidence_thresh:
-                continue
-
-            # Scale up to original image
-            x, y, w, h = int(x * 2), int(y * 2), int(w * 2), int(h * 2)
-            center_x = x + w // 2
-
-            if not (0.2 * frame_width < center_x < 0.8 * frame_width):
-                continue
-            if w < min_width or h < min_height:
-                continue
-            if h / float(w) < min_aspect_ratio:
-                continue
-
-            # Optional shrink to better localize torso
-            shrink = 0.7
-            new_w = int(w * shrink)
-            new_h = int(h * shrink)
-            new_x = x + (w - new_w) // 2
-            new_y = y + (h - new_h) // 2
-
-            z = (self.focal_length * self.real_batsman_height) / new_h
-
-            detections.append({
-                "bbox": [new_x, new_y, new_w, new_h],
-                "confidence": float(weight),
-                "z": round(z, 2)
-            })
-
-        return detections
-    
+    def _calculate_pose_confidence(self, detection):
+        """Calculate confidence score for the detection"""
+        visible_parts = sum(1 for v in detection.values() if v is not None)
+        return visible_parts / len(detection)
 
     # def _detect_ball_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
     #     """
@@ -252,7 +266,8 @@ class ObjectDetector:
 
     def _detect_ball_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
         """
-        Detect red/white cricket balls using traditional CV techniques.
+        Detect red/white cricket balls (green/yellow tennis balls optional)
+        using traditional CV techniques.
         
         Args:
             frame: Input frame
