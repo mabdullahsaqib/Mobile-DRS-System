@@ -1,5 +1,5 @@
-name: mobile_drs_system
-description: "A new Flutter project."
+name: DRS_Umpire
+description: "An application for umpires to get DRS reviews and decisions."
 publish_to: "none"
 version: 0.1.0
 
