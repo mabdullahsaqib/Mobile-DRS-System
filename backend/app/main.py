@@ -5,7 +5,6 @@ import os, json, base64, threading
 from core.InputModel import VideoAnalysisInput
 
 from modules.ball_tracking.src.main import ball_tracking
-# from modules.ball_tracking.dummy.ball_tracking_dummy import ball_tracking_dummy
 from modules.edge_detection.router import edge_detection
 from modules.trajectory_analysis.tests.work import run_analysis
 from modules.decision_making.FinalDecision import final_decision
@@ -28,12 +27,11 @@ def process_review(review_id: str, input_path):
         ball_data = ball_tracking(
             input_path, ball_tracking_output_path
         )
-        # ball_data = ball_tracking_dummy(duration_sec=8, fps=30)
 
         module = 2
 
         # Module 3: Edge Detection
-        # edge_result = edge_detection(input_path, ball_data)
+        edge_result = edge_detection(ball_data, input_path)
 
         module = 3
 
@@ -43,22 +41,11 @@ def process_review(review_id: str, input_path):
         module = 4
 
         # Module 5: Decision Making
-        # decision = final_decision(
-        #     ball_data, edge_result, hit
-        # )
         decision = final_decision(
-            ball_data, {
-        "is_edge_detected": True,
-        "min_distance": 0.5,
-        "ball_edge_point": [100, 200],
-        "nearest_bat_point": [150, 250]
-    }, hit
+            ball_data, edge_result, hit
         )
 
         module = 5
-
-        # decision = "dummy_out"
-        # result_video = b"dummy_video_data"
 
         # Module 6: Stream Analysis
         result_video = augmented_stream(
