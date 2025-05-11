@@ -1,5 +1,5 @@
-name: mobile_drs_system
-description: "A new Flutter project."
+name: DRS_Umpire
+description: "An application for umpires to get DRS reviews and decisions."
 publish_to: "none"
 version: 0.1.0
 
@@ -33,4 +33,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/splash_bg.png
+    - assets/splash_bg.jpg
+    - assets/black.jpg

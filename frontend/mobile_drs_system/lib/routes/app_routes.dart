@@ -5,6 +5,8 @@ import 'package:mobile_drs_system/screens/video_player_screen.dart';
 import 'package:mobile_drs_system/screens/decision_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart';
+import 'package:mobile_drs_system/screens/splash_screen.dart';
+
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -20,6 +22,7 @@ class AppRoutes {
   static final Map<String, WidgetBuilder> routes = {
     home: (context) => const HomeScreen(),
     videoRecording: (context) => const VideoRecordingScreen(),
+    splash: (context) => const SplashScreen(),
   };
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {

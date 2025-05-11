@@ -5,7 +5,6 @@ import '../utils/video_split_converter.dart';
 import '../routes/app_routes.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:async';
-import 'package:mobile_drs_system/screens/decision_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -73,7 +72,7 @@ Future<void> handleRequestReview() async {
   try {
     // Simulated POST request
     
-    print("Request body : ${results}");
+    print("Request body : $results");
     print("Frame data : ${results[0]['frameData'].runtimeType}");
     print("Audio data : ${results[0]['audioData'].runtimeType}");
     print("Position : ${results[0]['cameraPosition']['x'].runtimeType}");
