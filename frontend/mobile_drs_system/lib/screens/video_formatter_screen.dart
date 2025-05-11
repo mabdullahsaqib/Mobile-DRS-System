@@ -56,33 +56,35 @@ class _VideoFormatScreenState extends State<VideoFormatScreen> {
   bool reviewDone = false;
   bool errorOccurred = false;
 
-Future<void> handleRequestReview() async {
-  if (isProcessing) return;
+  Future<void> handleRequestReview() async {
+    if (isProcessing) return;
 
-  setState(() {
-    isProcessing = true;
-  });
+    setState(() {
+      isProcessing = true;
+    });
 
-  results = await processVideo(
-    widget.mainVideoPath,
-    widget.cameraPositions,
-    widget.cameraRotations,
-  );
+    results = await processVideo(
+      widget.mainVideoPath,
+      widget.cameraPositions,
+      widget.cameraRotations,
+    );
 
-  try {
-    // Simulated POST request
-    
-    print("Request body : $results");
-    print("Frame data : ${results[0]['frameData'].runtimeType}");
-    print("Audio data : ${results[0]['audioData'].runtimeType}");
-    print("Position : ${results[0]['cameraPosition']['x'].runtimeType}");
-    print("Rotation : ${results[0]['cameraRotation']['x'].runtimeType}");
+    try {
+      // Simulated POST request
 
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/submit-review'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({"results": results}),
-    ).timeout(const Duration(seconds: 100));
+      print("Request body : $results");
+      print("Frame data : ${results[0]['frameData'].runtimeType}");
+      print("Audio data : ${results[0]['audioData'].runtimeType}");
+      print("Position : ${results[0]['cameraPosition']['x'].runtimeType}");
+      print("Rotation : ${results[0]['cameraRotation']['x'].runtimeType}");
+
+      final response = await http
+          .post(
+            Uri.parse('http://10.0.2.2:8000/submit-review'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({"results": results}),
+          )
+          .timeout(const Duration(seconds: 100));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
