@@ -85,16 +85,6 @@ Future<void> handleRequestReview() async {
       body: jsonEncode({"results": results}),
     ).timeout(const Duration(seconds: 100));
 
-    try {
-      // Simulated POST request
-      final response = await http
-          .post(
-            Uri.parse('http://10.0.2.2:8000/submit-review'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(result),
-          )
-          .timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         reviewId = data['review_id'];
