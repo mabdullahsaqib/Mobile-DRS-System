@@ -339,31 +339,28 @@ def run_analysis(json_path: str) -> Tuple[list[dict[str, float]], bool]:
     
 
         # Try to get the current position from z_frame, else use last known ball position
+
+        last_known_position = {"x": 0.0, "y": 0.0, "z": 0.0}  # Initialize to default
         init_pos = z_frame["ball_trajectory"].get("current_position")
-        if not init_pos:
-            # Fallback: use last known ball position from frames
-            for f in reversed(frames):
-                bt = f.get("ball_trajectory")
-                if bt and bt.get("current_position"):
-                    init_pos = bt["current_position"]
-                    break
-            if not init_pos:
-                init_pos = {"x": 0.0, "y": 0.0, "z": 0.0}  # Default to origin if all else fails
+        if init_pos:
+            last_known_position = init_pos
+        elif not init_pos:
+            init_pos = last_known_position
         
+        last_known_vel = {"x": 0.0, "y": 0.0, "z": 0.0}
         vel = z_frame["ball_trajectory"].get("velocity")
+        if vel:
+            last_known_vel = vel
+        elif not vel:
+            vel = last_known_vel
+        
+        last_known_acc = {"x": 0.0, "y": -9.8, "z": 0.0}
         acc = z_frame["ball_trajectory"].get("acceleration")
-        if not vel or not acc:
-            # Fallback: use last known velocity/acceleration from frames
-            for f in reversed(frames):
-                bt = f.get("ball_trajectory")
-                if bt and bt.get("velocity") and bt.get("acceleration"):
-                    vel = bt["velocity"]
-                    acc = bt["acceleration"]
-                    break
-            if not vel:
-             vel = {"x": 0.0, "y": 0.0, "z": 0.0}
-            if not acc:
-                acc = {"x": 0.0, "y": -9.8, "z": 0.0}
+        if acc:
+            last_known_acc = acc
+        elif not acc:
+            acc = last_known_acc
+        
                 
         if spin_stats:
             axis = {'x': spin_stats['axis_x'], 'y': spin_stats['axis_y'], 'z': spin_stats['axis_z']}
