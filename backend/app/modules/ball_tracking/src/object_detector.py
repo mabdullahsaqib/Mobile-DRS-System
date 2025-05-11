@@ -7,17 +7,88 @@
 Object Detector Module
 
 This module is responsible for detecting cricket-related objects in video frames,
-including the ball, stumps, batsman, and bat. It uses a combination of traditional
-computer vision techniques and deep learning approaches.
+including the ball, stumps, batsman, and bat.
 
-Team Member Responsibilities:
-----------------------------
-Member 3: Object detection implementation, model training/integration, and detection optimization
 """
 
 import cv2
 import numpy as np
+import tensorflow as tf
+import tensorflow_hub as hub
+import time
+import mediapipe as mp
 from typing import Dict, List, Any, Tuple
+
+
+class BlazePoseDetector:
+    def __init__(self):
+        self.mp_pose = mp.solutions.pose
+        self.pose = self.mp_pose.Pose(
+            static_image_mode=False,
+            model_complexity=1,  # Try 0 for faster performance
+            smooth_landmarks=True,  # Add this for smoother results
+            enable_segmentation=False,
+            min_detection_confidence=0.7, 
+            min_tracking_confidence=0.7
+        )
+        
+        # Keypoints (MediaPipe returns 33 points)
+        self.keypointsMapping = [
+            "Nose", "Left Eye", "Right Eye", "Left Ear", "Right Ear",
+            "Left Shoulder", "Right Shoulder", "Left Elbow", "Right Elbow",
+            "Left Wrist", "Right Wrist", "Left Hip", "Right Hip",
+            "Left Knee", "Right Knee", "Left Ankle", "Right Ankle"
+        ]  # Only using 17 keypoints (similar to OpenPose for compatibility)
+
+    def detect(self, frame: np.ndarray) -> List[Dict[str, Any]]:
+        results = []
+        frame_height, frame_width = frame.shape[:2]  # Get dimensions first
+        
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame.flags.writeable = False  # Improves performance
+        
+        pose_results = self.pose.process(rgb_frame)
+        
+        if pose_results.pose_landmarks:
+            detection = {}
+            for idx, landmark in enumerate(pose_results.pose_landmarks.landmark):
+                if idx < len(self.keypointsMapping):
+                    # Use frame dimensions for proper projection
+                    x = int(landmark.x * frame_width)
+                    y = int(landmark.y * frame_height)
+                    detection[self.keypointsMapping[idx]] = (x, y)
+            results.append(detection)
+        
+        return results
+
+    def draw_pose(self, frame: np.ndarray, detections: List[Dict[str, Any]]):
+        for detection in detections:
+            # Draw keypoints
+            for (x, y) in detection.values():
+                cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+            
+            # Draw skeleton (simplified connections)
+            connections = [
+                ("Left Shoulder", "Right Shoulder"),
+                ("Left Shoulder", "Left Elbow"),
+                ("Left Elbow", "Left Wrist"),
+                ("Right Shoulder", "Right Elbow"),
+                ("Right Elbow", "Right Wrist"),
+                ("Left Shoulder", "Left Hip"),
+                ("Right Shoulder", "Right Hip"),
+                ("Left Hip", "Right Hip"),
+                ("Left Hip", "Left Knee"),
+                ("Left Knee", "Left Ankle"),
+                ("Right Hip", "Right Knee"),
+                ("Right Knee", "Right Ankle")
+            ]
+            
+            for (partA, partB) in connections:
+                if partA in detection and partB in detection:
+                    cv2.line(frame, detection[partA], detection[partB], (255, 0, 0), 2)
+        
+        return frame
+    
 
 class ObjectDetector:
     """
@@ -252,7 +323,8 @@ class ObjectDetector:
 
     def _detect_ball_traditional(self, frame: np.ndarray) -> List[Dict[str, Any]]:
         """
-        Detect red/white cricket balls using traditional CV techniques.
+        Detect red/white cricket balls (green/yellow tennis balls optional)
+        using traditional CV techniques.
         
         Args:
             frame: Input frame
