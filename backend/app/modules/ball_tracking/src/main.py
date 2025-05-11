@@ -14,6 +14,36 @@ from object_detector import ObjectDetector
 from stump_detector import StumpDetector
 from ball_tracker import BallTracker
 from batsman_tracker import BatsmanTracker
+import mediapipe as mp
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose(min_detection_confidence=0.7, min_tracking_confidence=0.7)
+
+
+class pose_detector:
+    def __init__(self):
+        # Keypoint names in order
+        self.keypointsMapping = [
+            "Nose", "Left Eye", "Right Eye", "Left Ear", "Right Ear",
+            "Left Shoulder", "Right Shoulder", "Left Elbow", "Right Elbow",
+            "Left Wrist", "Right Wrist", "Left Hip", "Right Hip",
+            "Left Knee", "Right Knee", "Left Ankle", "Right Ankle"
+        ]
+        
+        # Skeleton connections by index
+        self.POSE_PAIRS = [
+            (5, 6),   # Left Shoulder - Right Shoulder
+            (5, 7), (7, 9),  # Left Arm
+            (6, 8), (8, 10), # Right Arm
+            (5, 11), (6, 12), # Torso sides
+            (11, 12),        # Hips
+            (11, 13), (13, 15), # Left Leg
+            (12, 14), (14, 16)  # Right Leg
+        ]
+        
+        # Yellow color for all keypoints
+        self.colors = [(0, 255, 255)] * len(self.keypointsMapping)  # BGR: Yellow
+
+
 
 config_path = "config.json"
 
