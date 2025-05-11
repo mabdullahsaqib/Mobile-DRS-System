@@ -1,11 +1,7 @@
 import numpy as np
 import scipy.io.wavfile as wav
-<<<<<<< HEAD
-from modules.edge_detection.controllers.audio_detectionwav import decodebase64_pcm_to_wav,denoise_audio
-=======
 
-from modules.edge_detection.controllers.audio_detectionwav import decodebase64_convert_to_wav,denoise_audio
->>>>>>> 80368b47c4240fd1cbd981effd67aed99cc315ca
+from modules.edge_detection.controllers.audio_detectionwav import decodebase64_pcm_to_wav,denoise_audio
 
 def load_audio(filename):
     sample_rate, data = wav.read(filename)
