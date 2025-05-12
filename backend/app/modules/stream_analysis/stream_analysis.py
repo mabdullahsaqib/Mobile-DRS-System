@@ -11,7 +11,7 @@ def project_3d_to_2d(x, y, z, frame_width=1280, frame_height=720):
     y_2d = int((y / 20) * frame_height)
     x_2d = int(frame_width / 2 + x * 50)
     return x_2d, y_2d
-
+    
 def stream_analysis(frames, ball_positions, decision_data):
     
     print(f"[INFO] Type of ball posiitons:", type(ball_positions))
