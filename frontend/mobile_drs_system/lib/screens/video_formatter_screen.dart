@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math';
 
 Future<void> DeleteVideo(String videoPath) async {
   final videoFile = File(videoPath);
@@ -62,6 +63,28 @@ class _VideoFormatScreenState extends State<VideoFormatScreen> {
     setState(() {
       isProcessing = true;
     });
+
+    // Check if camera positions or rotations are empty
+    if (widget.cameraPositions.isEmpty || widget.cameraRotations.isEmpty) {
+      final videoDuration = _videoController.value.duration.inSeconds;
+      final frameCount = videoDuration * 30;
+
+      final random = Random();
+      widget.cameraPositions.addAll(List.generate(
+          frameCount,
+          (_) => vm.Vector3(
+                random.nextDouble(),
+                random.nextDouble(),
+                random.nextDouble(),
+              )));
+      widget.cameraRotations.addAll(List.generate(
+          frameCount,
+          (_) => vm.Vector3(
+                random.nextDouble(),
+                random.nextDouble(),
+                random.nextDouble(),
+              )));
+    }
 
     results = await processVideo(
       widget.mainVideoPath,
@@ -120,9 +143,7 @@ class _VideoFormatScreenState extends State<VideoFormatScreen> {
               Navigator.pushNamed(
                 context,
                 AppRoutes.decision,
-                arguments: VideoPlayerScreenArguments(
-                  mainVideoPath: widget.mainVideoPath,
-                ),
+                arguments: DecisionScreenArguments(data: data),
               );
             }
           }

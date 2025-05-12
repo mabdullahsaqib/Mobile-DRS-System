@@ -328,45 +328,52 @@ def find_valid_frame_id_before(frames, drop_frame_id):
 
 def run_analysis(json_path: str) -> Tuple[list[dict[str, float]], bool]:
     frames = json.loads(Path(json_path).read_text())
+    
+    try:
+        coords = extract_ball_positions(frames)
+        for frame_id, x, y, z in coords:
+            print(frame_id, x, y, z)
+            
+        drop_frame = find_first_z_drop(frames)
+        print(f"First Z drop before frame: {drop_frame}") if drop_frame is not None else None
+        
+        if drop_frame is None:
+            raise ValueError(f"No valid frame ID found at or before frame {drop_frame}.")
 
-    coords = extract_ball_positions(frames)
-    for frame_id, x, y, z in coords:
-        print(frame_id, x, y, z)
-
-    drop_frame = find_first_z_drop(frames)
-    print(f"First Z drop before frame: {drop_frame}") if drop_frame is not None else None
+        drop_frame = find_valid_frame_id_before(frames, drop_frame)
+        if drop_frame is None:
+            raise ValueError(f"No valid trajectory found at or before frame {drop_frame}.")
+        print(f"valid frame : {drop_frame}") if drop_frame is not None else None
 
 
-    drop_frame = find_valid_frame_id_before(frames, drop_frame)
-    if drop_frame is None:
-        raise ValueError(f"No valid trajectory found at or before frame {drop_frame}.")
-    print(f"valid frame : {drop_frame}") if drop_frame is not None else None
+        bounce_frame = find_lowest_y_before(frames, drop_frame) if drop_frame is not None else None
+        #print(f"Bounce point frame: {bounce_frame}") if bounce_frame is not None else None
 
+        # Estimate spin (optional parameters hardcoded or could be dynamic)
+        spin_stats = compute_average_spin_and_axis_between(frames, bounce_frame, drop_frame) if bounce_frame and drop_frame else None
 
-    bounce_frame = find_lowest_y_before(frames, drop_frame) if drop_frame is not None else None
-    #print(f"Bounce point frame: {bounce_frame}") if bounce_frame is not None else None
+        z_frame = next((f for f in frames if f.get("frame_id") == drop_frame), None)
+        if not z_frame:
+            raise ValueError("Z-drop frame data missing.")
 
-    # Estimate spin (optional parameters hardcoded or could be dynamic)
-    spin_stats = compute_average_spin_and_axis_between(frames, bounce_frame, drop_frame) if bounce_frame and drop_frame else None
+        init_pos = z_frame["ball_trajectory"]["current_position"]
+        vel = z_frame["ball_trajectory"]["velocity"]
+        acc = z_frame["ball_trajectory"]["acceleration"]
+        if spin_stats:
+            axis = {'x': spin_stats['axis_x'], 'y': spin_stats['axis_y'], 'z': spin_stats['axis_z']}
+            rate = spin_stats['rate']
+        else:
+            spin = z_frame["ball_trajectory"]["spin"]
+            axis = spin["axis"]
+            rate = spin["rate"]
 
-    z_frame = next((f for f in frames if f.get("frame_id") == drop_frame), None)
-    if not z_frame:
-        raise ValueError("Z-drop frame data missing.")
+        trajectory = extrapolate_trajectory(init_pos, vel, acc, axis, rate)
+       
+        stumps_bbox = [0.75, -0.25, 0.3, 0.8]
+        hit, _ = did_hit_stumps(trajectory, stumps_bbox)
 
-    init_pos = z_frame["ball_trajectory"]["current_position"]
-    vel = z_frame["ball_trajectory"]["velocity"]
-    acc = z_frame["ball_trajectory"]["acceleration"]
-    if spin_stats:
-        axis = {'x': spin_stats['axis_x'], 'y': spin_stats['axis_y'], 'z': spin_stats['axis_z']}
-        rate = spin_stats['rate']
-    else:
-        spin = z_frame["ball_trajectory"]["spin"]
-        axis = spin["axis"]
-        rate = spin["rate"]
-
-    trajectory = extrapolate_trajectory(init_pos, vel, acc, axis, rate)
-    stumps_bbox = [0.75, -0.25, 0.3, 0.8]
-    hit, _ = did_hit_stumps(trajectory, stumps_bbox)
+    except Exception as e:
+        print(f"ERROR IN RUN ANALYSIS : {e}")
 
     return trajectory, hit
 
