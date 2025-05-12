@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_drs_system/routes/app_routes.dart';
 import 'package:mobile_drs_system/utils/utils.dart';
@@ -27,29 +28,32 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.pushNamed(context, AppRoutes.videoRecording);
   }
 
-  void pickVideoFromGallery() {
-    FlutterMediaStore().pickFile(
-      multipleSelect: false,
-      onFilesPicked: (List<String> uris) {
-        if (uris.isNotEmpty) {
-          final file = File(uris.first);
-          Navigator.pushNamed(
-            context,
-            AppRoutes.videoFormat,
-            arguments: VideoFormatScreenArguments(
-              mainVideoPath: file.path,
-              cameraPositions: [],
-              cameraRotations: [],
-            ),
-          );
-        } else {
-          showToast("No video selected.");
-        }
-      },
-      onError: (String error) {
-        showToast("Failed to pick video: $error");
-      },
-    );
+  void pickVideoFromGallery() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.video,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final String filePath = result.files.single.path!;
+        final File file = File(filePath);
+
+        Navigator.pushNamed(
+          context,
+          AppRoutes.videoFormat,
+          arguments: VideoFormatScreenArguments(
+            mainVideoPath: file.path,
+            cameraPositions: [],
+            cameraRotations: [],
+          ),
+        );
+      } else {
+        showToast("No video selected.");
+      }
+    } catch (e) {
+      showToast("Failed to pick video: $e");
+    }
   }
 
   @override
@@ -90,8 +94,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -112,8 +116,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
