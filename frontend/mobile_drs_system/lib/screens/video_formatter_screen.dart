@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math';
 
 Future<void> DeleteVideo(String videoPath) async {
   final videoFile = File(videoPath);
@@ -62,6 +63,28 @@ class _VideoFormatScreenState extends State<VideoFormatScreen> {
     setState(() {
       isProcessing = true;
     });
+
+    // Check if camera positions or rotations are empty
+    if (widget.cameraPositions.isEmpty || widget.cameraRotations.isEmpty) {
+      final videoDuration = _videoController.value.duration.inSeconds;
+      final frameCount = videoDuration * 30;
+
+      final random = Random();
+      widget.cameraPositions.addAll(List.generate(
+          frameCount,
+          (_) => vm.Vector3(
+                random.nextDouble(),
+                random.nextDouble(),
+                random.nextDouble(),
+              )));
+      widget.cameraRotations.addAll(List.generate(
+          frameCount,
+          (_) => vm.Vector3(
+                random.nextDouble(),
+                random.nextDouble(),
+                random.nextDouble(),
+              )));
+    }
 
     results = await processVideo(
       widget.mainVideoPath,
@@ -120,9 +143,7 @@ class _VideoFormatScreenState extends State<VideoFormatScreen> {
               Navigator.pushNamed(
                 context,
                 AppRoutes.decision,
-                arguments: VideoPlayerScreenArguments(
-                  mainVideoPath: widget.mainVideoPath,
-                ),
+                arguments: DecisionScreenArguments(data: data),
               );
             }
           }
@@ -188,129 +209,131 @@ class _VideoFormatScreenState extends State<VideoFormatScreen> {
                     ],
                   ),
                 )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // App title
-                    Row(
-                      children: const [
-                        Icon(Icons.sports_cricket, color: Colors.white),
-                        SizedBox(width: 10),
-                        Text(
-                          "DRS Umpire",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Video preview
-                    AspectRatio(
-                      aspectRatio: _videoController.value.aspectRatio,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: VideoPlayer(_videoController),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _videoController.value.isPlaying
-                                    ? _videoController.pause()
-                                    : _videoController.play();
-                              });
-                            },
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.black38,
-                                shape: BoxShape.circle,
-                              ),
-                              padding: const EdgeInsets.all(12),
-                              child: Icon(
-                                _videoController.value.isPlaying
-                                    ? Icons.pause
-                                    : Icons.play_arrow,
-                                size: 40,
-                                color: Colors.white,
-                              ),
+              : SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // App title
+                      Row(
+                        children: const [
+                          Icon(Icons.sports_cricket, color: Colors.white),
+                          SizedBox(width: 10),
+                          Text(
+                            "DRS Umpire",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    const Text(
-                      "Do you want to send this for review?",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
+                      // Video preview
+                      AspectRatio(
+                        aspectRatio: _videoController.value.aspectRatio,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: VideoPlayer(_videoController),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _videoController.value.isPlaying
+                                      ? _videoController.pause()
+                                      : _videoController.play();
+                                });
+                              },
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.black38,
+                                  shape: BoxShape.circle,
+                                ),
+                                padding: const EdgeInsets.all(12),
+                                child: Icon(
+                                  _videoController.value.isPlaying
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
+                                  size: 40,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    ElevatedButton(
-                      onPressed: handleRequestReview,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF36B37E),
-                        foregroundColor: Colors.white,
-                        textStyle: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 32, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                      const Text(
+                        "Do you want to send this for review?",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      child: const Text("Request Review"),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.videoPlayer,
-                          arguments: VideoPlayerScreenArguments(
-                              mainVideoPath: widget.mainVideoPath),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0B1D1B),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                      const SizedBox(height: 24),
+
+                      ElevatedButton(
+                        onPressed: handleRequestReview,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF36B37E),
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
+                        child: const Text("Request Review"),
                       ),
-                      child: const Text("Watch Again"),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () async {
-                        await DeleteVideo(widget.mainVideoPath);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0B1D1B),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.videoPlayer,
+                            arguments: VideoPlayerScreenArguments(
+                                mainVideoPath: widget.mainVideoPath),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B1D1B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
+                        child: const Text("Watch Again"),
                       ),
-                      child: const Text("Discard & Re-record"),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () async {
+                          await DeleteVideo(widget.mainVideoPath);
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B1D1B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text("Discard & Re-record"),
+                      ),
+                    ],
+                  ),
                 ),
         ),
       ),
