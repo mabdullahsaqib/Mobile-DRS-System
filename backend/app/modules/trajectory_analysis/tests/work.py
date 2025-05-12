@@ -121,7 +121,7 @@ def find_first_z_drop(frames):
             continue
         z = bt["current_position"]["z"]
         if prev_z is not None and z < prev_z:
-            return frames[idx]["frame_id"] - 1
+            return frames[idx]["frame_id"]
         prev_z = z
     return None
 
@@ -303,15 +303,45 @@ def did_hit_stumps(trajectory, stumps_bbox, ball_radius=0.07):
 
 # if __name__ == "__main__":
 #     main()
+
+def find_valid_frame_id_before(frames, drop_frame_id):
+    frame_map = {f.get("frame_id"): f for f in frames}
+
+    for fid in range(drop_frame_id - 1, -1, -1):
+        frame = frame_map.get(fid)
+        if not frame:
+            continue
+        bt = frame.get("ball_trajectory", {})
+        cp = bt.get("current_position", {})
+        if (
+            cp.get("x") is not None
+            and cp.get("y") is not None
+            and cp.get("z") is not None
+        ):
+            return fid
+
+    return None
+
+
+
+
+
 def run_analysis(json_path: str) -> Tuple[list[dict[str, float]], bool]:
     frames = json.loads(Path(json_path).read_text())
 
     coords = extract_ball_positions(frames)
-    #for frame_id, x, y, z in coords:
-        #print(frame_id, x, y, z)
+    for frame_id, x, y, z in coords:
+        print(frame_id, x, y, z)
 
     drop_frame = find_first_z_drop(frames)
-    #print(f"First Z drop before frame: {drop_frame}") if drop_frame is not None else None
+    print(f"First Z drop before frame: {drop_frame}") if drop_frame is not None else None
+
+
+    drop_frame = find_valid_frame_id_before(frames, drop_frame)
+    if drop_frame is None:
+        raise ValueError(f"No valid trajectory found at or before frame {drop_frame}.")
+    print(f"valid frame : {drop_frame}") if drop_frame is not None else None
+
 
     bounce_frame = find_lowest_y_before(frames, drop_frame) if drop_frame is not None else None
     #print(f"Bounce point frame: {bounce_frame}") if bounce_frame is not None else None
@@ -341,7 +371,7 @@ def run_analysis(json_path: str) -> Tuple[list[dict[str, float]], bool]:
     return trajectory, hit
 
 if __name__ == "__main__":
-    trajectory, hit = run_analysis(Path(__file__).parent / "module2_output.json")
+    trajectory, hit = run_analysis(Path(__file__).parent / "output.json")
     print("Trajectory:")
     for step in trajectory:
         print(step)
