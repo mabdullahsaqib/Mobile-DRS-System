@@ -1,197 +1,151 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Refactored main.py for JSON-driven Ball and Bat Tracking Module
+main.py
 
-Replaces video capture with input.json parsing, and outputs output.json.
-No CLI argument parsing; this module exposes a `ball_tracking` function that the wrapper app can call.
+Modular pipeline:
+ - load_input: reads and parses input.json
+ - preprocess_frames: uses FrameProcessor to decode images
+ - detect_objects: uses ObjectDetector on frames
+ - generate_output: delegates to generate_output.py to write output.json
 """
 import json
-import cv2
-from typing import Optional
-from modules.ball_tracking.src.frame_processor import FrameProcessor
-from modules.ball_tracking.src.object_detector import ObjectDetector
-from modules.ball_tracking.src.stump_detector import StumpDetector
-from modules.ball_tracking.src.ball_tracker import BallTracker
-from modules.ball_tracking.src.batsman_tracker import BatsmanTracker
-import mediapipe as mp
+from typing import List, Dict, Any, Optional, Tuple
 
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(min_detection_confidence=0.7, min_tracking_confidence=0.7)
+from frame_processor import FrameProcessor
+from object_detector import ObjectDetector
+
+# Configuration path
+CONFIG_PATH = "config.json"
 
 
-class pose_detector:
-    def __init__(self):
-        # Keypoint names in order
-        self.keypointsMapping = [
-            "Nose", "Left Eye", "Right Eye", "Left Ear", "Right Ear",
-            "Left Shoulder", "Right Shoulder", "Left Elbow", "Right Elbow",
-            "Left Wrist", "Right Wrist", "Left Hip", "Right Hip",
-            "Left Knee", "Right Knee", "Left Ankle", "Right Ankle"
-        ]
-        
-        # Skeleton connections by index
-        self.POSE_PAIRS = [
-            (5, 6),   # Left Shoulder - Right Shoulder
-            (5, 7), (7, 9),  # Left Arm
-            (6, 8), (8, 10), # Right Arm
-            (5, 11), (6, 12), # Torso sides
-            (11, 12),        # Hips
-            (11, 13), (13, 15), # Left Leg
-            (12, 14), (14, 16)  # Right Leg
-        ]
-        
-        # Yellow color for all keypoints
-        self.colors = [(0, 255, 255)] * len(self.keypointsMapping)  # BGR: Yellow
+def load_config(path: str) -> Dict[str, Any]:
+    with open(path, 'r') as f:
+        return json.load(f)
 
-config_path = "modules/ball_tracking/src/config.json"
 
-def ball_tracking(input_json_path: str, output_json_path: str, visualize: bool = False):
-    # Initialize call tracking variable
-    call_check = ""
-    
-    # Load configuration
-    with open(config_path, 'r') as cfp:
-        config = json.load(cfp)
-    call_check = "config_loaded"
-
-    # Initialize modules with config
-    processor = FrameProcessor(config.get('frame_processor', {}))
-    call_check = "processor_initialized"
-    
-    detector = ObjectDetector(config.get('object_detector', {}))
-    call_check = "detector_initialized"
-    
-    stump_detector = StumpDetector(config.get('stump_detector', {}))
-    call_check = "stump_detector_initialized"
-    
-    ball_tracker = BallTracker(config.get('ball_tracker', {}))
-    call_check = "ball_tracker_initialized"
-    
-    batsman_tracker = BatsmanTracker(focal_length=config.get('batsman_tracker', {}).get('focal_length', 1500))
-    call_check = "batsman_tracker_initialized"
-    
-    stump_detector.update_interval = config.get('stump_detector', {}).get('update_interval', 1)
-    call_check = "modules_initialized"
-
-    # Read input JSON
-    with open(input_json_path, 'r') as f:
+def load_input(path: str) -> List[Dict[str, Any]]:
+    with open(path, 'r') as f:
         data = json.load(f)
-    call_check = "input_json_loaded"
+    return data.get('results', [])
 
-    try:
 
-        all_outputs = []
-        historical_positions = []
+def preprocess_frames(
+    entries: List[Dict[str, Any]],
+    processor: FrameProcessor
+) -> List[Tuple[int, Optional[Any], Optional[float], Dict[str, Any]]]:
+    """
+    Decodes base64 frames.
+    Returns list of tuples: (frame_id, frame_image or None, timestamp, metadata)
+    metadata contains cameraPosition and cameraRotation if present.
+    """
+    processed = []
+    for entry in entries:
+        fid = entry.get('frameId')
+        ts = entry.get('timestamp')
+        frame = processor.decode_and_preprocess(entry.get('frameData', ''))
+        meta = {}
+        if 'cameraPosition' in entry:
+            meta['camera_position'] = entry['cameraPosition']
+        if 'cameraRotation' in entry:
+            meta['camera_rotation'] = entry['cameraRotation']
+        processed.append((fid, frame, ts, meta))
+    return processed
 
-        # Process each frame entry
-        for entry in data.get('results', []):
-            frame_id = entry.get('frameId')
-            timestamp = entry.get('timestamp', None)
-            call_check = f"processing_frame_{frame_id}"
-            
-            # Decode and preprocess frame
-            frame_b64 = entry.get('frameData')
-            
-            if not frame_b64:
-                print(f"Frame data missing for frame ID {frame_id}. Skipping.")
-                continue
 
-            frame = processor.decode_and_preprocess(frame_b64)
-            call_check = f"frame_{frame_id}_decoded"
+def detect_objects(
+    frames: List[Tuple[int, Any, float, Dict[str, Any]]],
+    detector: ObjectDetector
+) -> List[Dict[str, Any]]:
+    """
+    Runs detection on preprocessed frames.
+    Returns list of output dicts with frame_id, timestamp, detections, and metadata.
+    """
+    outputs = []
+    for fid, frame, ts, meta in frames:
+        if frame is None:
+            continue
+        det = detector.detect(frame)
+        record: Dict[str, Any] = {
+            'frame_id': fid,
+            'timestamp': ts,
+            'detections': det
+        }
+        record.update(meta)
+        outputs.append(record)
+    return outputs
 
-            if frame is None:
-                print(f"Failed to decode frame data for frame ID {frame_id}. Skipping.")
-                continue
-                
-            # Detect objects
-            detections = detector.detect(frame)
-            call_check = f"objects_detected_frame_{frame_id}"
+def write_output(
+    results: List[Dict[str, Any]],
+    output_path: str
+) -> None:
+    """
+    Serializes a list of frame-level detection records to JSON.
 
-            if not detections:
-                print(f"No detections found for frame ID {frame_id}. Skipping.")
-                continue
-            
-            # Detect stumps and merge into detections
-            stumps_data = stump_detector.detect(frame, detections, frame_id)
-            call_check = f"stumps_detected_frame_{frame_id}"
-            
-            if stumps_data:
-                detections['stumps'] = [{
-                    'bbox': [
-                        stumps_data['bbox']['x'],
-                        stumps_data['bbox']['y'],
-                        stumps_data['bbox']['w'],
-                        stumps_data['bbox']['h'],
-                    ],
-                    'confidence': stumps_data['detection_confidence']
-                }]
-            else:
-                detections['stumps'] = []
-            call_check = f"stumps_processed_frame_{frame_id}"
+    - Converts any tuple bboxes or points into lists for JSON compatibility.
+    - Writes pretty-printed JSON to `output_path`.
+    """
+    serialized = []
+    for record in results:
+        out_rec = {
+            'frame_id': record.get('frame_id'),
+            'timestamp': record.get('timestamp'),
+            'detections': {},
+        }
+        # copy through camera metadata if present
+        if 'camera_position' in record:
+            out_rec['camera_position'] = record['camera_position']
+        if 'camera_rotation' in record:
+            out_rec['camera_rotation'] = record['camera_rotation']
 
-            # Track ball
-            trajectory_data = ball_tracker.track(frame, detections, historical_positions)
-            call_check = f"ball_tracked_frame_{frame_id}"
-            
-            if trajectory_data:
-                historical_positions.append(trajectory_data['current_position'])
-            call_check = f"trajectory_processed_frame_{frame_id}"
+        # process each detection category
+        detections = record.get('detections', {})
+        for category, items in detections.items():
+            out_items = []
+            for det in items:
+                det_copy = det.copy()
+                # convert bbox tuple to list
+                bbox = det_copy.get('bbox')
+                if isinstance(bbox, tuple):
+                    det_copy['bbox'] = list(bbox)
+                # convert any center tuple
+                center = det_copy.get('center')
+                if isinstance(center, tuple):
+                    det_copy['center'] = list(center)
+                # convert position dict z if needed (already numeric)
+                out_items.append(det_copy)
+            out_rec['detections'][category] = out_items
 
-            # Track batsman
-            batsman_tracker.update(detections.get('batsman', []), frame.shape, frame_id)
-            call_check = f"batsman_tracked_frame_{frame_id}"
+        # include optional trajectory or other keys verbatim
+        if 'ball_trajectory' in record:
+            out_rec['ball_trajectory'] = record['ball_trajectory']
+        if 'batsman_position' in record:
+            out_rec['batsman_position'] = record['batsman_position']
 
-            # Ensure all keys exist
-            for key in ['ball', 'batsman', 'bat', 'pads']:
-                detections.setdefault(key, [])
-            call_check = f"detections_normalized_frame_{frame_id}"
+        serialized.append(out_rec)
 
-            # Build output record
-            output = {
-                'frame_id': frame_id,
-                'timestamp': timestamp,
-                'detections': {
-                    'ball': detections['ball'],
-                    'stumps': detections['stumps'],
-                    'batsman': detections['batsman'],
-                    'bat': detections['bat'],
-                    'pads': detections['pads'],
-                },
-                'ball_trajectory': trajectory_data or {},
-                'batsman_position': batsman_tracker.get_position() or {}
-            }
-            call_check = f"output_built_frame_{frame_id}"
+    # write to file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(serialized, f, indent=2, ensure_ascii=False)
 
-            # Optional: preserve camera metadata
-            if 'cameraPosition' in entry:
-                output['camera_position'] = entry['cameraPosition']
-            if 'cameraRotation' in entry:
-                output['camera_rotation'] = entry['cameraRotation']
 
-            all_outputs.append(output)
-            call_check = f"frame_{frame_id}_processed"
-            
-            # if visualize:
-            #     for obj in detections['ball']:
-            #         x, y, w, h = obj['bbox']
-            #         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
-            #         cv2.putText(frame, 'Ball', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-            #     for obj in detections['stumps']:
-            #         x, y, w, h = obj['bbox']
-            #         cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-            #         cv2.putText(frame, 'Stumps', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-            #     for obj in detections['batsman']:
-            #         x, y, w, h = obj['bbox']
-            #         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
-            #         cv2.putText(frame, 'Batsman', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-        
-    except Exception as e:
-        print(f"Error processing frame {frame_id}: {e} at {call_check}")
-        
-    # Save outputs
-    with open(output_json_path, 'w') as ofp:
-        json.dump(all_outputs, ofp, indent=2)
-    call_check = "output_json_saved"
 
-    return all_outputs
+
+def ball_tracking(
+    input_json: str,
+    output_json: str
+) -> None:
+    # load config and initialize
+    config = load_config(CONFIG_PATH)
+    processor = FrameProcessor()
+    detector = ObjectDetector(config)
+
+    # load and preprocess
+    entries = load_input(input_json)
+    frames = preprocess_frames(entries, processor)
+
+    # detect objects
+    results = detect_objects(frames, detector)
+
+    # delegate output generation
+    write_output(results, output_json)

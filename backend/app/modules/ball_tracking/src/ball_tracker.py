@@ -21,8 +21,9 @@ import os
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(BASE_DIR, "yolov4-tiny.cfg")
-weights_path = os.path.join(BASE_DIR, "yolov4-tiny.weights")
+
+config_path = "../assests/yolov4-tiny.cfg"
+weights_path = "../assests/yolov4-tiny.weights"
 
 config_path = os.path.abspath(config_path)
 weights_path = os.path.abspath(weights_path)
@@ -315,7 +316,7 @@ class BallTracker:
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
     
-    def track(self, frame: np.ndarray, detections: Dict[str, List[Dict[str, Any]]], 
+    def track(self, frame: np.ndarray, 
               historical_positions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Track the ball in the current frame and calculate trajectory data.
@@ -329,7 +330,7 @@ class BallTracker:
             Dictionary containing ball trajectory data
         """
         # Extract ball detections
-        ball_detections = detections.get("ball", [])
+        ball_detections = []
         
         # If no ball detected
         if not ball_detections:
@@ -558,7 +559,7 @@ class BallTracker:
         """
         # Calculate spin (in a real implementation, this would use more sophisticated techniques)
         spin_axis, spin_rate = self._estimate_spin(historical_positions)
-        
+        recent = historical_positions[-10:] 
         return {
             "current_position": {
                 "x": float(position[0]),
@@ -584,7 +585,7 @@ class BallTracker:
                 "rate": float(spin_rate)
             },
             "detection_confidence": float(confidence),
-            "historical_positions": historical_positions[-10:] if historical_positions else []
+            "historical_positions": recent if recent else []
         }
     
     def _estimate_spin(self, historical_positions: List[Dict[str, Any]]) -> Tuple[np.ndarray, float]:
