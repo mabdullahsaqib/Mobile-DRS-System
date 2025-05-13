@@ -87,7 +87,7 @@ def edge_detection(frames: List[Dict], file_path:str) -> Dict:
                 c=1
 
 
-
+    decision="Not Out"
     audio_chunks = get_audio_base64_list(file_path)
     for i in audio_chunks:
         decision = drs_system_pipeline(i)
