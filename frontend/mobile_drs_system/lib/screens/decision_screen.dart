@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:mobile_drs_system/screens/video_player_screen.dart';
+import 'package:flutter_media_store/flutter_media_store.dart';
+
 
 class DecisionScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -48,21 +50,43 @@ class _DecisionScreenState extends State<DecisionScreen> {
   }
 
   Future<void> _saveToGallery() async {
-    // if (_tempVideoPath == null) return;
+    if (_tempVideoPath == null) return;
 
-    // setState(() => _isSaving = true);
-    // final result = await ImageGallerySaver.saveFile(_tempVideoPath!);
-    // setState(() => _isSaving = false);
+    setState(() => _isSaving = true);
+    try {
+      final file = File(_tempVideoPath!);
+      final flutterMediaStore = FlutterMediaStore();
+      String? savedPath;
 
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(
-    //     content: Text(result['isSuccess'] ? 'Video saved to gallery!' : 'Failed to save video.'),
-    //   ),
-    // );
+      await flutterMediaStore.saveFile(
+        fileData: await file.readAsBytes(),
+        fileName: '${DateTime.now().millisecondsSinceEpoch}.mp4',
+        mimeType: "video/mp4",
+        rootFolderName: "MobileDRS",
+        folderName: "Videos",
+        onError: (e) {
+          throw Exception("Error saving video: $e");
+        },
+        onSuccess: (uri, filePath) {
+          savedPath = filePath;
+        },
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text("Saving not supported on this build.")),
-  );
+      setState(() => _isSaving = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(savedPath != null
+              ? 'Video saved to gallery! Path: $savedPath'
+              : 'Failed to save video.'),
+        ),
+      );
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving video: $e')),
+      );
+    }
   }
 
   void _replayVideo() {

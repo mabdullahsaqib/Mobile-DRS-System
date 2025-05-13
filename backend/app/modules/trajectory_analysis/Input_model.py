@@ -22,7 +22,10 @@ class Spin(BaseModel):
 class Point2D(BaseModel):
     x: int
     y: int
-
+class Acceleration3D(BaseModel):
+    x: float
+    y: float
+    z: float
 
 class StumpDetection(BaseModel):
     bbox: List[int]          
@@ -40,8 +43,21 @@ class BallDetection(BaseModel):
 class Detections(BaseModel):
     ball: List[BallDetection]
     stumps: List[StumpDetection]
+    batsman: List = []
+    bat: List = []
+    pads: List = []
+
+class BallTrajectory(BaseModel):
+    current_position: Position3D
+    velocity: Velocity3D
+    acceleration: Acceleration3D
+    spin: Spin
+    detection_confidence: float
+    historical_positions: List[Position3D]
+
 
 class FrameInput(BaseModel):
     frame_id: int
     timestamp: float
     detections: Detections
+    ball_trajectory: BallTrajectory

@@ -1,10 +1,11 @@
 import 'package:mobile_drs_system/screens/home_screen.dart';
-import 'package:mobile_drs_system/screens/master_screen.dart';
 import 'package:mobile_drs_system/screens/video_formatter_screen.dart';
 import 'package:mobile_drs_system/screens/video_recording_screen.dart';
 import 'package:mobile_drs_system/screens/video_player_screen.dart';
+import 'package:mobile_drs_system/screens/decision_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart';
+import 'package:mobile_drs_system/screens/splash_screen.dart';
 
 
 class AppRoutes {
@@ -16,11 +17,12 @@ class AppRoutes {
   static const String videoRecording = '/video-recording';
   static const String videoPlayer = '/video-player';
   static const String videoFormat = '/video-format';
+  static const String decision = '/decision';
 
   static final Map<String, WidgetBuilder> routes = {
     home: (context) => const HomeScreen(),
-    master: (context) => const MasterScreen(),
     videoRecording: (context) => const VideoRecordingScreen(),
+    splash: (context) => const SplashScreen(),
   };
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
@@ -39,6 +41,13 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (context) => VideoPlayerScreen(
             mainVideoPath: args.mainVideoPath,
+          ),
+        );
+      case decision:
+        final args = settings.arguments as DecisionScreenArguments;
+        return MaterialPageRoute(
+          builder: (context) => DecisionScreen(
+            data: args.data,
           ),
         );
       default:
@@ -65,5 +74,13 @@ class VideoPlayerScreenArguments {
 
   VideoPlayerScreenArguments({
     required this.mainVideoPath,
+  });
+}
+
+class DecisionScreenArguments {
+  final Map<String, dynamic> data;
+
+  DecisionScreenArguments({
+    required this.data,
   });
 }

@@ -1,7 +1,5 @@
 # from fastapi import FastAPI
 # from fastapi.testclient import TestClient
-from Module4 import get_combined_data
-
 
 # app = FastAPI()
 
@@ -20,8 +18,7 @@ def check_ball_inline(data):
                 "batsman": frame["detections"].get("batsman", [])
             })
 
-    # select the ball frame where the ball is closest to the ground
-    #pitch_frame = min(ball_frames, key=lambda f: f["ball"]["z"])
+    # select the ball frame where the ball is closest to the grou
     pitch_frame = min(ball_frames, key=lambda f: f["ball_center"][1])
 
     if pitch_frame:
@@ -63,25 +60,21 @@ def check_ball_inline(data):
     return False  # No valid frame found
 
 def bat_edge_detect(data):
-    return {"edge_detected": data['edge_detected']}
-
-def wicket_impact(data):
-    return {"will_hit_stumps": data['will_hit_stumps']}
+    return {"edge_detected": data['is_edge_detected']}
 
 #computing the final decision
-def final_decision():
-    data = get_combined_data()
-    inline = check_ball_inline(data)
-    edge_detected = bat_edge_detect(data)
-    will_hit_stumps = wicket_impact(data)
+def final_decision(module2, module3, module4):
+    inline = check_ball_inline(module2)
+    edge_detected = bat_edge_detect(module3)
+    will_hit_stumps = module4
     print("Inline:", inline)
     print("Edge Detected:", edge_detected)
     print("Will Hit Stumps:", will_hit_stumps)
-    if not inline["inline"]:
+    if not inline:
         return {"Out": False, "Reason": "not inline"}
     elif edge_detected["edge_detected"]:
         return {"Out": False, "Reason": "Bat Edge Detected"}
-    elif not will_hit_stumps["will_hit_stumps"]:
+    elif not will_hit_stumps:
         return {"Out": False, "Reason": "Missing Wicket"}
     else:
         return {"Out": True, "Reason": "Out"}

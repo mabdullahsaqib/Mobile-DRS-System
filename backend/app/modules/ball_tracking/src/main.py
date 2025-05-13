@@ -1,118 +1,151 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+main.py
 
-import cv2
+Modular pipeline:
+ - load_input: reads and parses input.json
+ - preprocess_frames: uses FrameProcessor to decode images
+ - detect_objects: uses ObjectDetector on frames
+ - generate_output: delegates to generate_output.py to write output.json
+"""
 import json
-import argparse
+from typing import List, Dict, Any, Optional, Tuple
+
 from frame_processor import FrameProcessor
 from object_detector import ObjectDetector
-from stump_detector import StumpDetector
-from ball_tracker import BallTracker  # <- NEW
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Ball and Object Tracker Module")
-    parser.add_argument('--config', type=str, default='config.json', help='Path to config file')
-    parser.add_argument('--input', type=str, default='v1.mp4', help='Input video path')
-    parser.add_argument('--output', type=str, default='output.json', help='Output JSON path')
-    parser.add_argument('--visualize', action='store_true', help='Visualize detections')
-    return parser.parse_args()
+# Configuration path
+CONFIG_PATH = "config.json"
 
-def main():
-    args = parse_arguments()
 
-    # Load config
-    with open(args.config) as f:
-        config = json.load(f)
+def load_config(path: str) -> Dict[str, Any]:
+    with open(path, 'r') as f:
+        return json.load(f)
 
-    # Initialize processors
-    processor = FrameProcessor(config.get('frame_processor', {}))
-    detector = ObjectDetector(config.get('object_detector', {}))
-    stump_detector = StumpDetector(config.get('stump_detector', {}))
-    ball_tracker = BallTracker(config.get('ball_tracker', {}))  # <- NEW
 
-    stump_detector.update_interval = 1
-    cap = cv2.VideoCapture(args.input)
-    frame_id = 0
-    all_outputs = []
-    historical_positions = []
+def load_input(path: str) -> List[Dict[str, Any]]:
+    with open(path, 'r') as f:
+        data = json.load(f)
+    return data.get('results', [])
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
 
-        timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-        processed_frame = processor.preprocess_frame(frame)
-        detections = detector.detect(processed_frame)
+def preprocess_frames(
+    entries: List[Dict[str, Any]],
+    processor: FrameProcessor
+) -> List[Tuple[int, Optional[Any], Optional[float], Dict[str, Any]]]:
+    """
+    Decodes base64 frames.
+    Returns list of tuples: (frame_id, frame_image or None, timestamp, metadata)
+    metadata contains cameraPosition and cameraRotation if present.
+    """
+    processed = []
+    for entry in entries:
+        fid = entry.get('frameId')
+        ts = entry.get('timestamp')
+        frame = processor.decode_and_preprocess(entry.get('frameData', ''))
+        meta = {}
+        if 'cameraPosition' in entry:
+            meta['camera_position'] = entry['cameraPosition']
+        if 'cameraRotation' in entry:
+            meta['camera_rotation'] = entry['cameraRotation']
+        processed.append((fid, frame, ts, meta))
+    return processed
 
-        # Merge stump boxes every frame
-        stumps_data = stump_detector.detect(frame, detections, frame_id)
-        if stumps_data:
-            detections['stumps'] = [{
-                'bbox': [
-                    stumps_data['bbox']['x'],
-                    stumps_data['bbox']['y'],
-                    stumps_data['bbox']['w'],
-                    stumps_data['bbox']['h']
-                ],
-                'confidence': stumps_data['detection_confidence']
-            }]
-        else:
-            detections['stumps'] = []
 
-        # Track ball and compute trajectory
-        trajectory_data = ball_tracker.track(processed_frame, detections, historical_positions)
-        if trajectory_data:
-            historical_positions.append(trajectory_data['current_position'])
-
-        # Ensure missing keys are filled
-        detections.setdefault("ball", [])
-        detections.setdefault("batsman", [])
-        detections.setdefault("bat", [])
-        detections.setdefault("pads", [])
-
-        # Build output dict
-        output = {
-            "frame_id": frame_id,
-            "timestamp": timestamp,
-            "detections": {
-                "ball": detections["ball"],
-                "stumps": detections["stumps"],
-                "batsman": detections["batsman"],
-                "bat": detections["bat"],
-                "pads": detections["pads"]
-            },
-            "ball_trajectory": trajectory_data if trajectory_data else {}
+def detect_objects(
+    frames: List[Tuple[int, Any, float, Dict[str, Any]]],
+    detector: ObjectDetector
+) -> List[Dict[str, Any]]:
+    """
+    Runs detection on preprocessed frames.
+    Returns list of output dicts with frame_id, timestamp, detections, and metadata.
+    """
+    outputs = []
+    for fid, frame, ts, meta in frames:
+        if frame is None:
+            continue
+        det = detector.detect(frame)
+        record: Dict[str, Any] = {
+            'frame_id': fid,
+            'timestamp': ts,
+            'detections': det
         }
-        all_outputs.append(output)
+        record.update(meta)
+        outputs.append(record)
+    return outputs
 
-        if args.visualize:
-            # Visualize detections
-            for obj in detections["ball"]:
-                x, y, w, h = obj["bbox"]
-                cv2.rectangle(processed_frame, (x, y), (x+w, y+h), (0, 255, 255), 2)
-                cv2.putText(processed_frame, 'Ball', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-            for obj in detections["stumps"]:
-                x, y, w, h = obj["bbox"]
-                cv2.rectangle(processed_frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                cv2.putText(processed_frame, 'Stumps', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-            for obj in detections["batsman"]:
-                x, y, w, h = obj["bbox"]
-                cv2.rectangle(processed_frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
-                cv2.putText(processed_frame, 'Batsman', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+def write_output(
+    results: List[Dict[str, Any]],
+    output_path: str
+) -> None:
+    """
+    Serializes a list of frame-level detection records to JSON.
 
-            cv2.imshow("Detections", processed_frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+    - Converts any tuple bboxes or points into lists for JSON compatibility.
+    - Writes pretty-printed JSON to `output_path`.
+    """
+    serialized = []
+    for record in results:
+        out_rec = {
+            'frame_id': record.get('frame_id'),
+            'timestamp': record.get('timestamp'),
+            'detections': {},
+        }
+        # copy through camera metadata if present
+        if 'camera_position' in record:
+            out_rec['camera_position'] = record['camera_position']
+        if 'camera_rotation' in record:
+            out_rec['camera_rotation'] = record['camera_rotation']
 
-        frame_id += 1
+        # process each detection category
+        detections = record.get('detections', {})
+        for category, items in detections.items():
+            out_items = []
+            for det in items:
+                det_copy = det.copy()
+                # convert bbox tuple to list
+                bbox = det_copy.get('bbox')
+                if isinstance(bbox, tuple):
+                    det_copy['bbox'] = list(bbox)
+                # convert any center tuple
+                center = det_copy.get('center')
+                if isinstance(center, tuple):
+                    det_copy['center'] = list(center)
+                # convert position dict z if needed (already numeric)
+                out_items.append(det_copy)
+            out_rec['detections'][category] = out_items
 
-    cap.release()
-    cv2.destroyAllWindows()
+        # include optional trajectory or other keys verbatim
+        if 'ball_trajectory' in record:
+            out_rec['ball_trajectory'] = record['ball_trajectory']
+        if 'batsman_position' in record:
+            out_rec['batsman_position'] = record['batsman_position']
 
-    # Save output
-    with open(args.output, 'w') as f:
-        json.dump(all_outputs, f, indent=2)
+        serialized.append(out_rec)
 
-if __name__ == "__main__":
-    main()
+    # write to file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(serialized, f, indent=2, ensure_ascii=False)
+
+
+
+
+def ball_tracking(
+    input_json: str,
+    output_json: str
+) -> None:
+    # load config and initialize
+    config = load_config(CONFIG_PATH)
+    processor = FrameProcessor()
+    detector = ObjectDetector(config)
+
+    # load and preprocess
+    entries = load_input(input_json)
+    frames = preprocess_frames(entries, processor)
+
+    # detect objects
+    results = detect_objects(frames, detector)
+
+    # delegate output generation
+    write_output(results, output_json)
