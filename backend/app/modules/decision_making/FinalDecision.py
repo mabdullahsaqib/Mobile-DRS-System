@@ -19,7 +19,7 @@ def check_ball_inline(data):
             })
 
     # select the ball frame where the ball is closest to the ground
-    pitch_frame = min(ball_frames, key=lambda f: f["ball"]["z"])
+    pitch_frame = min(ball_frames, key=lambda f: f["ball_center"][1])
 
     if pitch_frame:
         ball_data = pitch_frame.get("ball", {})
