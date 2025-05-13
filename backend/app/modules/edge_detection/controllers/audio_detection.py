@@ -33,6 +33,34 @@ def detect_spikes(frames, threshold_factor=2.5):
     spikes = np.where(energies > threshold_factor * mean_energy)[0]
     return spikes
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+def visualize_audio(data, sample_rate, spikes=None, frame_duration_ms=10, output_path=None):
+    time = np.linspace(0, len(data) / sample_rate, num=len(data))
+    plt.figure(figsize=(12, 4))
+    plt.plot(time, data, label='Audio Signal', alpha=0.6)
+
+    if spikes is not None and len(spikes) > 0:
+        frame_size = int(sample_rate * (frame_duration_ms / 1000))
+        spike_times = [frame * frame_size / sample_rate for frame in spikes]
+        for spike_time in spike_times:
+            plt.axvline(x=spike_time, color='r', linestyle='--', alpha=0.8, label='Spike')
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys())
+    else:
+        plt.legend()
+
+    plt.title("Audio Waveform with Detected Spikes")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Amplitude")
+    plt.tight_layout()
+
+    plt.savefig(output_path, format='png')
+    plt.close()
+
 
 def make_decision(spikes):
     if len(spikes) > 0:
@@ -62,5 +90,10 @@ def drs_system_pipeline(audio_data_base64) -> str:
 
     # Step 6: Make decision
     decision = make_decision(spikes)
+
+    path = "assets/spikes.png" #add path to output directory here 
+
+    #adding graph to visualise detected spikes
+    visualize_audio(data, sample_rate, spikes, path)
 
     return decision
