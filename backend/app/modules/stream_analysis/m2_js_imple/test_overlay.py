@@ -3,9 +3,9 @@ import base64
 from pathlib import Path
 import cv2
 import numpy as np
-from overlay_utils import  stream_analysis  # Import overlay logic
+from overlay_utils import  stream_analysis  #  overlay logic
 #from stream import StreamOverlay  # Assuming this is the correct import path
-# Function to simulate the generation of frames based on a background image
+# Function to simulate the generation of frames based on a background img
 
 def generate_frames_from_background(num_frames=50, background_image_path="input/straight_view.jpg"):
     # Load the background image
@@ -15,9 +15,9 @@ def generate_frames_from_background(num_frames=50, background_image_path="input/
     
     frames = []
     for i in range(num_frames):
-        frame = background.copy()  # Create a copy of the background image
+        frame = background.copy()  # Create  copy of the background img
         # Update ball position dynamically
-        ball_position_x = int(100 + i * 10)  # Ball moves in x-direction
+        ball_position_x = int(100 + i * 10)  # Ball moves in x-dir
         cv2.circle(frame, (ball_position_x, 300), 20, (0, 255, 0), -1)  # Draw the moving ball
         
         # Convert frame to base64
@@ -45,10 +45,10 @@ def generate_ball_positions(num_positions=50):
 def generate_decision_data():
     return {"Out": True, "Reason": "Ball hit pad in line"}
 
-# Main function to run the test
+# Main func to run the test
 def main():
     try:
-        # Path to the background image
+        # Path to the background img
         background_image_path = "input/straight_view.jpg"
 
         # Step 1: Generate frames based on background image

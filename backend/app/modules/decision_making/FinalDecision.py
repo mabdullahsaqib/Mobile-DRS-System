@@ -1,14 +1,12 @@
 # from fastapi import FastAPI
 # from fastapi.testclient import TestClient
-# from Module4 import get_combined_data
-
 
 # app = FastAPI()
 
 def check_ball_inline(data):
     ball_frames = []
 
-    #get the ball frames
+    #get all frames with ball data
     for frame in data:
         ball_data = frame.get("detections", {}).get("ball", [])
         if ball_data:
@@ -16,56 +14,67 @@ def check_ball_inline(data):
                 "timestamp": frame["timestamp"],
                 "ball_center": ball_data[0]["center"],  # (x, y)
                 "ball": ball_data[0],
-                "stumps": frame["detections"].get("stumps", [])
+                "stumps": frame["detections"].get("stumps", []),
+                "batsman": frame["detections"].get("batsman", [])
             })
 
     # select the ball frame where the ball is closest to the ground
-    ground_frame = min(ball_frames, key=lambda x: x["ball_center"][1], default=None)
+    pitch_frame = min(ball_frames, key=lambda f: f["ball_center"][1])
 
-    if ground_frame:
-        ball_cx, ball_cy = ground_frame["ball_center"]
-        stumps = ground_frame["stumps"]
+    if pitch_frame:
+        ball_data = pitch_frame.get("ball", {})
+        stumps = pitch_frame.get("stumps", [])
+        batsman = pitch_frame.get("batsman", [])
 
-        if not stumps:
-            return {"inline": False}
+        if ball_data and stumps and batsman:
+            #get batsman wrist data fr position
+            keypoints = batsman[0]["keypoints"]
+            lw = keypoints.get("Left Wrist")
+            rw = keypoints.get("Right Wrist")
+            is_right_handed = rw[0] < lw[0]
 
-      #calculate the bounding box of the stumps
-        x, y, width, height = stumps[0]["bbox"]
-        left = x
-        top = y
-        right = x + width
-        bottom = y - height
+            #check ball impact position
+            st_x, _, st_w, _ = stumps[0]["bbox"]
+            st_left = st_x
+            st_right = st_x + st_w
 
-        # basic check to see if the ball is within the stumps bounding box
-        inline = left <= ball_cx <= right and top >= ball_cy >= bottom
+            #compare ball impact position with stumps
+            hip_center_x = (keypoints.get("Left Hip", [0])[0] + keypoints.get("Right Hip", [0])[0]) / 2
 
-        print(f"Ball impact frame timestamp: {ground_frame['timestamp']}")
-        print(f"Ball center: ({ball_cx}, {ball_cy})")
-        print(f"Stumps combined bbox: left={left}, top={top}, right={right}, bottom={bottom}")
+            #check if the ball is in line with the stumps
+            pitch_cx, _ = ball_data["center"]
+            if (is_right_handed and pitch_cx > st_right) or (not is_right_handed and pitch_cx < st_left):
+                return False
 
-        return {"inline": inline}
+            # Check if the ball impacted the correct side
+            impact_cx, _ = ball_data["center"]
+            if is_right_handed:
+                if impact_cx < hip_center_x:
+                    return False  # offside
+            else:
+                if impact_cx > hip_center_x:
+                    return False  # offside
 
-    # If no valid frame found
-    return {"inline": False}
+            return True  # inline or leg side
+
+    return False  # No valid frame found
 
 def bat_edge_detect(data):
     return {"edge_detected": data['is_edge_detected']}
 
-def final_decision(module2_data, module3_data, module4_data):
-    inline = check_ball_inline(module2_data)
-    edge_detected = bat_edge_detect(module3_data)
-    will_hit_stumps = module4_data
-
+#computing the final decision
+def final_decision(module2, module3, module4):
+    inline = check_ball_inline(module2)
+    edge_detected = bat_edge_detect(module3)
+    will_hit_stumps = module4
     print("Inline:", inline)
     print("Edge Detected:", edge_detected)
     print("Will Hit Stumps:", will_hit_stumps)
-
-    if not inline["inline"]:
-        return {"Out": False, "Reason": "Not Inline"}
+    if not inline:
+        return {"Out": False, "Reason": "not inline"}
     elif edge_detected["edge_detected"]:
         return {"Out": False, "Reason": "Bat Edge Detected"}
     elif not will_hit_stumps:
         return {"Out": False, "Reason": "Missing Wicket"}
     else:
         return {"Out": True, "Reason": "Out"}
-

@@ -14,8 +14,9 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Mobile DRS App',
+      title: 'DRS Umpire',
       scaffoldMessengerKey: scaffoldMessengerKey,
+      initialRoute: AppRoutes.splash,
       routes: AppRoutes.routes,
       onGenerateRoute: AppRoutes.onGenerateRoute,
       theme: ThemeData(

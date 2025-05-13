@@ -1,198 +1,411 @@
 import json
-import os
-from dataclasses import dataclass
-from typing import List, Tuple, Optional
-import json
+from pathlib import Path
+import sys
+from typing import Tuple
 import numpy as np
 
-@dataclass
-class Frame3D:
-    frame_id: int
-    timestamp: float
-    x: float
-    y: float
-    z: float
-
-@dataclass
-class Stump:
-    top_x: float
-    top_y: float
-    bottom_x: float
-    bottom_y: float
-    top_z: float
-    bottom_z: float
-
-def load_module2_data(json_file: str) -> Tuple[List[Frame3D], List[List[Stump]]]:
-    base = os.path.dirname(__file__)
-    path = os.path.join(base, json_file)
-    raw = json.load(open(path, 'r'))
-
-    frames: List[Frame3D] = []
-    stumps_all: List[List[Stump]] = []
-
-    for obj in raw:
-        fid = obj["frame_id"]
-        ts  = float(obj["timestamp"])
-        ball_det = obj["detections"]["ball"]
-        if not ball_det:
+def extract_ball_positions(frames):
+    positions = []
+    for f in frames:
+        bt = f.get("ball_trajectory")
+        if not bt:
             continue
-        b = ball_det[0]
-        cx, cy, cz = b["center3d"]
-        frames.append(Frame3D(fid, ts, cx, cy, cz))
+        cp = bt.get("current_position")
+        if not cp:
+            continue
+        if all(k in cp for k in ("x", "y", "z")):
+            positions.append((f["frame_id"], cp["x"], cp["y"], cp["z"]))
+    return positions
 
-        smods: List[Stump] = []
-        for s in obj["detections"]["stumps"]:
-            tx, ty, tz = s["top3d"]
-            bx, by, bz = s["bottom3d"]
-            smods.append(Stump(tx, ty, bx, by, tz, bz))
-        stumps_all.append(smods)
+def find_lowest_y_before(frames, end_frame_id):
+    lowest = None
+    lowest_frame = None
+    for f in frames:
+        frame_id = f.get("frame_id")
+        if frame_id is None or frame_id >= end_frame_id:
+            continue
+        bt = f.get("ball_trajectory")
+        if not bt or not bt.get("current_position"):
+            continue
+        y = bt["current_position"]["y"]
+        if lowest is None or y < lowest:
+            lowest = y
+            lowest_frame = frame_id
+    return lowest_frame
 
-    return frames, stumps_all
 
-def find_bounce_index(frames: List[Frame3D]) -> Optional[int]:
-    ys = [f.y for f in frames]
-    return int(np.argmin(ys)) if ys else None
+from typing import Tuple
+import numpy as np
 
-def find_impact_index(frames: List[Frame3D], start: int = 0) -> Optional[int]:
-    for i in range(start+1, len(frames)):
-        if frames[i].z < frames[i-1].z:
-            return i
+
+def estimate_spin_rate_between_frames(frames, bounce_frame_id, hit_frame_id):
+
+    try:
+
+        relevant_frames = [
+            f
+            for f in frames
+            if bounce_frame_id <= f.get("frame_id", -1) <= hit_frame_id
+        ]
+        if not relevant_frames:
+            raise ValueError("No frames found in the given ID range.")
+
+        relevant_frames.sort(key=lambda x: x["frame_id"])
+
+        positions = []
+        timestamps = []
+
+        for frame in relevant_frames:
+            traj = frame.get("ball_trajectory", {})
+            current_pos = traj.get("current_position")
+            if current_pos:
+                x, y, z = (
+                    current_pos.get("x"),
+                    current_pos.get("y"),
+                    current_pos.get("z"),
+                )
+                if x is not None and y is not None and z is not None:
+                    positions.append([x, y, z])
+                    timestamps.append(frame.get("timestamp"))
+                else:
+                    print(
+                        f"Incomplete position data in frame {frame['frame_id']}. Skipping."
+                    )
+            else:
+                print(f"No trajectory in frame {frame['frame_id']}. Skipping.")
+
+        if len(positions) < 3:
+            raise ValueError("Not enough valid position data to estimate spin.")
+
+        positions = np.array(positions)
+
+        v = np.gradient(positions, axis=0)  # First derivative -> velocity
+        a = np.gradient(v, axis=0)  # second derivative -> acceleration
+        mid_index = len(positions) // 2
+
+        velocity = v[mid_index]
+        acceleration = a[mid_index]
+
+        magnus_force_direction = np.cross(velocity, acceleration)
+        norm = np.linalg.norm(magnus_force_direction)
+        if norm == 0:
+            raise ValueError("Spin axis undefined due to zero magnus force direction.")
+
+        spin_axis = magnus_force_direction / (norm + 1e-8)
+        spin_rate = float(norm)
+
+        spin_along_axis = spin_axis * spin_rate
+
+        return {
+            "rate": spin_rate,
+            "axis_x": spin_along_axis[0],
+            "axis_y": spin_along_axis[1],
+            "axis_z": spin_along_axis[2],
+        }
+
+    except Exception as e:
+        print(f"Error estimating spin rate: {e}")
+        return {
+            "rate": 0,
+            "axis_x": 0.0,
+            "axis_y": 0.0,
+            "axis_z": 0.0,
+        }
+
+
+def find_first_z_drop(frames):
+    prev_z = None
+    for idx, f in enumerate(frames):
+        bt = f.get("ball_trajectory")
+        if not bt or not bt.get("current_position"):
+            continue
+        z = bt["current_position"]["z"]
+        if prev_z is not None and z < prev_z:
+            return frames[idx]["frame_id"] - 1
+        prev_z = z
     return None
 
-def estimate_spin(frames: List[Frame3D], i_start: int, i_end: int) -> Tuple[np.ndarray, float]:
-    vs = []
-    for i in range(i_start+1, i_end+1):
-        dt = frames[i].timestamp - frames[i-1].timestamp or 1e-6
-        v = np.array([
-            (frames[i].x - frames[i-1].x)/dt,
-            (frames[i].y - frames[i-1].y)/dt,
-            (frames[i].z - frames[i-1].z)/dt
-        ])
-        vs.append(v)
-    if len(vs) < 2:
-        return np.array([0.0, 0.0, 1.0]), 0.0
-    axis = np.cross(vs[0], vs[-1])
-    norm = np.linalg.norm(axis)
-    axis = axis / (norm or 1.0)
-    dot = np.dot(vs[0], vs[-1])
-    ang = np.arccos(np.clip(dot / ((np.linalg.norm(vs[0]) * np.linalg.norm(vs[-1])) or 1.0), -1, 1))
-    rate = ang / ((frames[i_end].timestamp - frames[i_start].timestamp) or 1e-6)
-    return axis, rate
+def compute_average_spin_and_axis_between(frames, start_frame_id, end_frame_id):
+   
+    total_rate = 0
+    total_axis_x = 0
+    total_axis_y = 0
+    total_axis_z = 0
+    count = 0
 
-def simulate_with_spin(
-    pos: np.ndarray, vel: np.ndarray,
-    spin_axis: np.ndarray, spin_rate: float,
-    z_stump: float,
-    dt: float = 0.005
-) -> List[Tuple[float, float, float, float]]:
-    traj = []
-    t = 0.0
-    traj.append((t, pos[0], pos[1], pos[2]))
+    for f in frames:
+        frame_id = f.get("frame_id")
+        if frame_id is None or not (start_frame_id <= frame_id < end_frame_id):
+            continue
+        try:
+            spin = f["ball_trajectory"]["spin"]
+            rate = spin["rate"]
+            axis = spin["axis"]
+            if not all(isinstance(val, (int, float)) for val in [rate, axis["x"], axis["y"], axis["z"]]):
+                continue
+            total_rate += rate
+            total_axis_x += axis["x"]
+            total_axis_y += axis["y"]
+            total_axis_z += axis["z"]
+            count += 1
+        except (KeyError, TypeError):
+            continue
 
-    g_vec = np.array([0.0, -9.81, 0.0])
-    C_d = 0.005
-    S = 1e-4
-    while pos[2] > z_stump and pos[1] > -1.0:  # Corrected condition
-        Fg = g_vec
-        Fd = -C_d * np.linalg.norm(vel) * vel
-        Fm = S * np.cross(spin_rate * spin_axis, vel)
-        a = Fg + Fd + Fm
+    if count == 0:
+        return None
 
-        vel += a * dt
-        pos += vel * dt
-        t += dt
-        traj.append((t, pos[0], pos[1], pos[2]))
-    return traj
-
-def check_hit(final_pos: np.ndarray, stumps: List[Stump]) -> bool:
-    xs = [s.top_x for s in stumps] + [s.bottom_x for s in stumps]
-    ys = [s.top_y for s in stumps] + [s.bottom_y for s in stumps]
-    min_x, max_x = min(xs), max(xs)
-    min_y, max_y = min(ys), max(ys)
-    x_ok = min_x <= final_pos[0] <= max_x
-    y_ok = min_y <= final_pos[1] <= max_y
-    return x_ok and y_ok
-
-def process_full_trajectory(json_file: str) -> dict:
-    frames, stumps_all = load_module2_data(json_file)
-    if not frames:
-        return {"error": "No ball data"}
-
-    # 1) Bounce detection
-    i_b = find_bounce_index(frames) or 0
-
-    # 2) Impact detection (first z-drop)
-    i_imp = find_impact_index(frames, i_b) or i_b
-
-    # 3) Spin estimation between bounce and impact
-    axis, rate = estimate_spin(frames, i_b, i_imp)
-
-    # 4) Initial position & velocity at impact
-    f0 = frames[i_imp]
-    f_prev = frames[max(i_imp-1, 0)]
-    dt0 = f0.timestamp - f_prev.timestamp or 1e-6
-    v0 = np.array([
-        (f0.x - f_prev.x) / dt0,
-        (f0.y - f_prev.y) / dt0,
-        (f0.z - f_prev.z) / dt0
-    ])
-    p0 = np.array([f0.x, f0.y, f0.z])
-
-    # 5) Stump plane depth (mean of stump tops)
-    stumps = stumps_all[i_imp]
-    z_stump = float(np.mean([s.top_z for s in stumps]))  # cast to Python float
-
-    # 6) Simulate the trajectory
-    traj = simulate_with_spin(p0, v0, axis, rate, z_stump)
-
-    # 7) Hit test on the final point
-    final_t, final_x, final_y, final_z = traj[-1]
-    hit = check_hit(np.array([final_x, final_y, final_z]), stumps)
-
-    # Return a structured result
     return {
-        "bounce_index": i_b,
-        "impact_index": i_imp,
-        "spin_axis": axis.tolist(),
-        "spin_rate": rate,
-        "stump_depth": z_stump,
-        "hit": hit,
-        "trajectory": [
-            {"t": round(t, 3), "x": x, "y": y, "z": z}
-            for (t, x, y, z) in traj
-        ]
+        "rate": total_rate / count,
+        "axis_x": total_axis_x / count,
+        "axis_y": total_axis_y / count,
+        "axis_z": total_axis_z / count,
     }
-import json
-import numpy as np
 
-def make_json_serializable(obj):
-    """
-    Recursively convert numpy types to native Python types.
-    """
-    if isinstance(obj, dict):
-        return {make_json_serializable(k): make_json_serializable(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [make_json_serializable(v) for v in obj]
-    elif isinstance(obj, np.bool_):
-        return bool(obj)
-    elif isinstance(obj, np.integer):
-        return int(obj)
-    elif isinstance(obj, np.floating):
-        return float(obj)
+
+def extrapolate_trajectory(
+    initial_position,
+    velocity,
+    acceleration,
+    spin_axis,
+    spin_rate,
+    steps=30,
+    dt=1/30
+):
+    pos = initial_position.copy()
+    vel = velocity.copy()
+    acc = acceleration.copy()
+    result = []
+
+    magnus_coefficient = 0.0005  # tweak for realism
+
+    for _ in range(steps):
+        # Magnus force (simplified cross product spin x velocity)
+        magnus_force = {
+            'x': magnus_coefficient * spin_rate * (spin_axis['y'] * vel['z'] - spin_axis['z'] * vel['y']),
+            'y': magnus_coefficient * spin_rate * (spin_axis['z'] * vel['x'] - spin_axis['x'] * vel['z']),
+            'z': magnus_coefficient * spin_rate * (spin_axis['x'] * vel['y'] - spin_axis['y'] * vel['x']),
+        }
+
+        # Update velocity
+        vel['x'] += (acc['x'] + magnus_force['x']) * dt
+        vel['y'] += (acc['y'] + magnus_force['y']) * dt
+        vel['z'] += (acc['z'] + magnus_force['z']) * dt
+
+        # Update position
+        pos['x'] += vel['x'] * dt + 0.5 * acc['x'] * dt**2
+        pos['y'] += vel['y'] * dt + 0.5 * acc['y'] * dt**2
+        pos['z'] += vel['z'] * dt + 0.5 * acc['z'] * dt**2
+
+        result.append({'x': pos['x'], 'y': pos['y'], 'z': pos['z']})
+
+    return result
+
+def did_hit_stumps(trajectory, stumps_bbox, ball_radius=0.07):
+
+    st_x, st_y, st_w, st_h = stumps_bbox
+    st_right = st_x + st_w
+    st_bottom = st_y + st_h
+
+    for pos in trajectory:
+        x, y = pos['x'], pos['y']
+
+        # Check if center of ball (plus radius) intersects with stumps area
+        if (st_x - ball_radius) <= x <= (st_right + ball_radius) and \
+           (st_y - ball_radius) <= y <= (st_bottom + ball_radius):
+            return True, pos
+
+    return False, None
+
+
+
+# def main():
+#     path = Path(__file__).parent / "module2_output.json"
+#     if not path.exists():
+#         print(f"Error: file not found at {path}", file=sys.stderr)
+#         sys.exit(1)
+#     text = path.read_text()
+#     if not text.strip():
+#         print(f"Error: {path} is empty", file=sys.stderr)
+#         sys.exit(1)
+#     try:
+#         data = json.loads(text)
+#     except json.JSONDecodeError as e:
+#         print(f"JSON decode error at line {e.lineno}, column {e.colno}: {e.msg}", file=sys.stderr)
+#         sys.exit(1)
+#     coords = extract_ball_positions(data)
+#     for frame_id, x, y, z in coords:
+#         print(frame_id, x, y, z)
+#     drop_frame = find_first_z_drop(data)
+#     if drop_frame is not None:
+#         print(f"First Z drop before frame: {drop_frame}")
+
+#     bounce_frame = find_lowest_y_before(data, drop_frame)
+#     if bounce_frame is not None:
+#         print(f"Bounce point frame: {bounce_frame}")
+#     else:
+#         print("No valid frames before z-drop to compute bounce point.")
+
+#     if bounce_frame is not None and drop_frame is not None:
+#         spin_stats = compute_average_spin_and_axis_between(data, 35, 60)
+
+#         # Testing by rei
+#         spin_stats_t = estimate_spin_rate_between_frames(data, 35, 60);
+#         print(spin_stats)
+#         print(spin_stats_t)
+#         # if spin_stats:
+#         #     # print(f"Average spin rate between bounce and z-drop: {spin_stats['rate']:.2f} rpm")
+#         #     print(f"Average spin axis: x = {spin_stats['axis_x']:.4f}, y = {spin_stats['axis_y']:.4f}, z = {spin_stats['axis_z']:.4f}")
+#         # else:
+#         #     print(f"No valid spin data between frames {bounce_frame} and {drop_frame}.")
+
+#     # Set constant average velocity and acceleration (approximation for realism)
+#     # avg_velocity = {'x': 0.0, 'y': -17.0, 'z': 1.5}  # meters/second
+#     # avg_acceleration = {'x': 0.0, 'y': -9.8, 'z': 0.0}  # only gravity
+
+#     # Get last known position from z-drop frame
+#     z_frame = next((f for f in data if f["frame_id"] == drop_frame), None)
+#     if z_frame:
+#         start_pos = z_frame["ball_trajectory"]["current_position"]
+#         vel = z_frame["ball_trajectory"]["velocity"]
+#         acc = z_frame["ball_trajectory"]["acceleration"]
+
+#         # Use previously computed average spin axis/rate
+#         spin_axis = {
+#             'x': spin_stats['axis_x'],
+#             'y': spin_stats['axis_y'],
+#             'z': spin_stats['axis_z']
+#         }
+#         spin_rate = spin_stats['rate']
+
+#         # Simulate
+#         future_positions = extrapolate_trajectory(
+#             initial_position=start_pos,
+#             velocity=vel,
+#             acceleration=acc,
+#             spin_axis=spin_axis,
+#             spin_rate=spin_rate,
+#             steps=30
+#         )
+
+#         for i, pos in enumerate(future_positions):
+#             print(f"Step {i+1}: x={pos['x']:.2f}, y={pos['y']:.2f}, z={pos['z']:.2f}")
+#     # Assume this is your stumps bbox (in meters or same units as ball trajectory)
+#     # You may need to convert pixel bbox to meters if your trajectory is in meters
+#     stumps_bbox = [0.75, -0.25, 0.3, 0.8]  # x, y, width, height
+
+#     hit, position = did_hit_stumps(future_positions, stumps_bbox)
+
+#     if hit:
+#         print(f"Ball hit the stumps at position: x={position['x']:.2f}, y={position['y']:.2f}, z={position['z']:.2f}")
+#     else:
+#         print("Ball did not hit the stumps.")
+
+
+# if __name__ == "__main__":
+#     main()
+def run_analysis(json_path: str) -> Tuple[list[dict[str, float]], bool]:
+    frames = json.loads(Path(json_path).read_text())
+
+    coords = extract_ball_positions(frames)
+    #for frame_id, x, y, z in coords:
+        #print(frame_id, x, y, z)
+
+    drop_frame = find_first_z_drop(frames)
+    #print(f"First Z drop before frame: {drop_frame}") if drop_frame is not None else None
+
+    bounce_frame = find_lowest_y_before(frames, drop_frame) if drop_frame is not None else None
+    #print(f"Bounce point frame: {bounce_frame}") if bounce_frame is not None else None
+
+    # Estimate spin (optional parameters hardcoded or could be dynamic)
+    spin_stats = compute_average_spin_and_axis_between(frames, bounce_frame, drop_frame) if bounce_frame and drop_frame else None
+
+    z_frame = next((f for f in frames if f.get("frame_id") == drop_frame), None)
+    if not z_frame:
+        raise ValueError("Z-drop frame data missing.")
+
+    init_pos = z_frame["ball_trajectory"]["current_position"]
+    vel = z_frame["ball_trajectory"]["velocity"]
+    acc = z_frame["ball_trajectory"]["acceleration"]
+    if spin_stats:
+        axis = {'x': spin_stats['axis_x'], 'y': spin_stats['axis_y'], 'z': spin_stats['axis_z']}
+        rate = spin_stats['rate']
     else:
-        return obj
+        spin = z_frame["ball_trajectory"]["spin"]
+        axis = spin["axis"]
+        rate = spin["rate"]
 
-result = process_full_trajectory("module2_output.json")
-serializable = make_json_serializable(result)
+    trajectory = extrapolate_trajectory(init_pos, vel, acc, axis, rate)
+    stumps_bbox = [0.75, -0.25, 0.3, 0.8]
+    hit, _ = did_hit_stumps(trajectory, stumps_bbox)
 
-with open("output.json", "w") as f:
-    json.dump(serializable, f, indent=2)
+    return trajectory, hit
+
+def almost_equal(a, b, tol=1e-6):
+    return abs(a - b) <= tol
+
+def test_extrapolate_straight_line():
+    print("=== test_extrapolate_straight_line ===")
+    init_pos = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+    vel      = {'x': 1.0, 'y': 0.0, 'z': 0.0}
+    acc      = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+    spin_ax  = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+    spin_rt  = 0.0
+
+    traj = extrapolate_trajectory(init_pos, vel, acc, spin_ax, spin_rt, steps=5, dt=0.1)
+    print("Trajectory:", traj)
+
+    success = True
+    for i, pos in enumerate(traj, start=1):
+        expected_x = i * 0.1
+        if not almost_equal(pos['x'], expected_x) or not almost_equal(pos['y'],0) or not almost_equal(pos['z'],0):
+            success = False
+            print(f"  ✗ step {i}: got {pos}, expected x≈{expected_x}, y=0, z=0")
+    print("PASS\n" if success else "FAIL\n")
+
+def test_extrapolate_constant_acceleration():
+    """
+    With zero initial velocity and constant acceleration along z of 2 m/s²,
+    semi-implicit Euler integration with dt=0.5 yields z ≈ [0.75, 2.0, 3.75, 6.0].
+    """
+    init_pos = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+    vel      = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+    acc      = {'x': 0.0, 'y': 0.0, 'z': 2.0}
+    spin_ax  = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+    spin_rt  = 0.0
+
+    steps = 4
+    dt = 0.5
+    traj = extrapolate_trajectory(init_pos, vel, acc, spin_ax, spin_rt, steps, dt)
+    print("Trajectory:", traj)
+
+    expected_zs = [0.75, 2.0, 3.75, 6.0]
+    success = True
+
+    for i, (pos, expected_z) in enumerate(zip(traj, expected_zs), start=1):
+        if not almost_equal(pos['z'], expected_z):
+            success = False
+            print(f"  ✗ step {i}: got z={pos['z']}, expected {expected_z}")
+    print("PASS\n" if success else "FAIL\n")
+
+
+def test_extrapolate_with_spin_magnus_effect():
+    print("=== test_extrapolate_with_spin_magnus_effect ===")
+    init_pos = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+    vel      = {'x': 10.0, 'y': 0.0, 'z': 0.0}
+    acc      = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+    spin_ax  = {'x': 0.0, 'y': 0.0, 'z': 1.0}
+    spin_rt  = 50.0
+
+    traj = extrapolate_trajectory(init_pos, vel, acc, spin_ax, spin_rt, steps=20, dt=1/60.0)
+    print("Trajectory (last 5 steps):", traj[-5:])
+
+    final_y = traj[-1]['y']
+    if final_y > 0:
+        print(f"PASS (final y = {final_y:.6f} > 0)\n")
+    else:
+        print(f"FAIL (final y = {final_y:.6f} ≤ 0)\n")
 
 if __name__ == "__main__":
-    import pprint
-    # result = process_full_trajectory("module2_output.json")
-    import json
-    result = process_full_trajectory("module2_output.json")
-    pprint.pprint(result, width=120)
-    make_json_serializable(result)
-    
+    test_extrapolate_straight_line()
+    test_extrapolate_constant_acceleration()
+    test_extrapolate_with_spin_magnus_effect()

@@ -33,12 +33,12 @@ def edge_detection(frames: List[Dict], file_path:str) -> Dict:
         timestamp = frame.get("timestamp")
 
         if not frame['detections']['ball'] or not frame['detections']['bat']:
-            results.append({
+            results = {
                 "frame_id": frame_id,
                 "timestamp": timestamp,
                 "is_edge_detected": False,
                 "reason": "No ball or bat detected"
-            })
+            }
             continue
 
         ball = frame['detections']['ball'][0]
@@ -87,7 +87,7 @@ def edge_detection(frames: List[Dict], file_path:str) -> Dict:
                 c=1
 
 
-
+    decision="Not Out"
     audio_chunks = get_audio_base64_list(file_path)
     for i in audio_chunks:
         decision = drs_system_pipeline(i)

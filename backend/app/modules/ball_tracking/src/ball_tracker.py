@@ -21,6 +21,7 @@ import os
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 config_path = "../assests/yolov4-tiny.cfg"
 weights_path = "../assests/yolov4-tiny.weights"
 
