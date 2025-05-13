@@ -16,6 +16,17 @@ import cv2
 import numpy as np
 from typing import Dict, List, Any, Tuple, Optional
 import math
+import os
+
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(BASE_DIR, "yolov4-tiny.cfg")
+weights_path = os.path.join(BASE_DIR, "yolov4-tiny.weights")
+
+config_path = os.path.abspath(config_path)
+weights_path = os.path.abspath(weights_path)
+
 
 class BallTracker:
     """
@@ -88,6 +99,20 @@ class BallTracker:
 
         # Add minimum radius parameter
         self.min_radius = config.get("min_ball_radius", 5)
+
+        #Add DNN model parameters
+        self.dnn_model=config.get("dnn_model","yolov4-tiny")
+        self._init_dnn_model()
+
+    def _init_dnn_model(self):
+        """initializing pretrained model"""
+        if self.dnn_model=="yolov4-tiny":
+            self.net = cv2.dnn.readNetFromDarknet(config_path, weights_path)
+            self.classes=["sports ball"]
+            self.min_dnn_confidence=0.25 #low confidence for small objects
+
+        self.layer_names=self.net.getLayerNames()
+        self.output_layers=[self.layer_names[i-1] for i in self.net.getUnconnectedOutLayers()]
     
     def _init_kalman_filter(self):
         """Initialize Kalman filter for ball tracking."""
@@ -128,6 +153,42 @@ class BallTracker:
         # Error covariance
         self.kalman.errorCovPost = np.eye(9, dtype=np.float32)
     
+    def detect_ball_dnn(self, frame: np.ndarray) -> Optional[Tuple[Tuple[int, int], int]]:
+        """Detect ball using pretrained DNN model."""
+        height, width = frame.shape[:2]
+        
+        # Preprocess frame for DNN
+        blob = cv2.dnn.blobFromImage(frame, 1/255.0, (416, 416), swapRB=True, crop=False)
+        self.net.setInput(blob)
+        outputs = self.net.forward(self.output_layers)
+
+        # Process detections
+        boxes = []
+        confidences = []
+        for out in outputs:
+            for detection in out:
+                scores = detection[5:]
+                class_id = np.argmax(scores)
+                confidence = scores[class_id]
+                if confidence > self.min_dnn_confidence and class_id == 32:  # COCO sports ball class
+                    center_x = int(detection[0] * width)
+                    center_y = int(detection[1] * height)
+                    w = int(detection[2] * width)
+                    h = int(detection[3] * height)
+                    x = int(center_x - w / 2)
+                    y = int(center_y - h / 2)
+                    boxes.append([x, y, w, h])
+                    confidences.append(float(confidence))
+
+        # Apply non-maxima suppression
+        indices = cv2.dnn.NMSBoxes(boxes, confidences, self.min_dnn_confidence, 0.4)
+
+        if len(indices) > 0:
+            best_idx = indices[0]
+            x, y, w, h = boxes[best_idx]
+            return (x + w//2, y + h//2), max(w, h)//2
+        return None
+
     def detect_ball_color(self,frame:np.ndarray) -> Optional[Tuple[Tuple[int,int],int]]:
         """ Detect ball using color filtering
         Args: frame:Input frame
@@ -231,8 +292,8 @@ class BallTracker:
         # ----- HOUGH CIRCLE FALLBACK -----
         circles = cv2.HoughCircles(
             blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30,
-            param1=50, param2=30,
-            minRadius=self.min_radius, maxRadius=60
+            param1=30, param2=20,
+            minRadius=2, maxRadius=60
         )
 
         if circles is not None:
@@ -280,6 +341,17 @@ class BallTracker:
                     "radius":radius,
                     "confidence":0.8
                 }]
+
+            # Try DNN detection as final fallback
+            dnn_detection = self.detect_ball_dnn(frame)
+            if dnn_detection:
+                center, radius = dnn_detection
+                ball_detections = [{
+                    "center": center,
+                    "radius": radius,
+                    "confidence": 0.7  # Lower confidence than color detection
+                }]
+
             # 
             if not ball_detections:
                 return self._handle_missing_detection(historical_positions)
