@@ -1,31 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Ball Tracker Module
-
-This module is responsible for tracking the cricket ball across video frames,
-calculating its trajectory, velocity, acceleration, and spin.
-
-Team Member Responsibilities:
-----------------------------
-Member 4: Ball tracking algorithms, trajectory calculation, and physics modeling
-"""
-
 import cv2
 import numpy as np
 from typing import Dict, List, Any, Tuple, Optional
 import math
 import os
+from ultralytics import YOLO
 
-import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-config_path = "../assests/yolov4-tiny.cfg"
-weights_path = "../assests/yolov4-tiny.weights"
+# config_path = "../assests/yolov4-tiny.cfg"
+# weights_path = "../assests/yolov4-tiny.weights"
 
-config_path = os.path.abspath(config_path)
+weights_path = "../assests/yolov8m weights.pt"
+#weights_path = "../assests/yolov8x weights.pt"
+
+# config_path = os.path.abspath(config_path)
 weights_path = os.path.abspath(weights_path)
 
 
@@ -51,7 +43,7 @@ class BallTracker:
         self.config = config
          # Tracking parameters
         self.max_tracking_distance = config.get("max_tracking_distance", 100)
-        self.min_detection_confidence = config.get("min_detection_confidence", 0.5)
+        self.min_confidence = config.get("min_confidence", 0.5)
         
         # Physics calculation parameters
         self.gravity = config.get("gravity", 9.8)
@@ -65,7 +57,7 @@ class BallTracker:
         
         # Tracking parameters
         self.max_tracking_distance = config.get("max_tracking_distance", 100)
-        self.min_detection_confidence = config.get("min_detection_confidence", 0.5)
+        self.min_confidence = config.get("min_confidence", 0.5)
         
         # Physics calculation parameters
         self.gravity = config.get("gravity", 9.8)  # m/s²
@@ -79,8 +71,8 @@ class BallTracker:
         # State variables
         self.is_tracking = False
         self.last_position = None
-        self.last_velocity = None
-        self.last_acceleration = None
+        self.last_velocity = np.zeros(3, dtype=float)
+        self.last_acceleration = np.array([0, -self.gravity, 0], dtype=float)
         self.tracking_lost_frames = 0
         self.max_lost_frames = config.get("max_lost_frames", 10)
 
@@ -107,13 +99,8 @@ class BallTracker:
 
     def _init_dnn_model(self):
         """initializing pretrained model"""
-        if self.dnn_model=="yolov4-tiny":
-            self.net = cv2.dnn.readNetFromDarknet(config_path, weights_path)
-            self.classes=["sports ball"]
-            self.min_dnn_confidence=0.25 #low confidence for small objects
-
-        self.layer_names=self.net.getLayerNames()
-        self.output_layers=[self.layer_names[i-1] for i in self.net.getUnconnectedOutLayers()]
+        self.model = YOLO(weights_path)
+        self.min_dnn_confidence = self.config.get("min_dnn_confidence", 0.25)
     
     def _init_kalman_filter(self):
         """Initialize Kalman filter for ball tracking."""
@@ -154,41 +141,25 @@ class BallTracker:
         # Error covariance
         self.kalman.errorCovPost = np.eye(9, dtype=np.float32)
     
-    def detect_ball_dnn(self, frame: np.ndarray) -> Optional[Tuple[Tuple[int, int], int]]:
-        """Detect ball using pretrained DNN model."""
-        height, width = frame.shape[:2]
-        
-        # Preprocess frame for DNN
-        blob = cv2.dnn.blobFromImage(frame, 1/255.0, (416, 416), swapRB=True, crop=False)
-        self.net.setInput(blob)
-        outputs = self.net.forward(self.output_layers)
-
-        # Process detections
-        boxes = []
-        confidences = []
-        for out in outputs:
-            for detection in out:
-                scores = detection[5:]
-                class_id = np.argmax(scores)
-                confidence = scores[class_id]
-                if confidence > self.min_dnn_confidence and class_id == 32:  # COCO sports ball class
-                    center_x = int(detection[0] * width)
-                    center_y = int(detection[1] * height)
-                    w = int(detection[2] * width)
-                    h = int(detection[3] * height)
-                    x = int(center_x - w / 2)
-                    y = int(center_y - h / 2)
-                    boxes.append([x, y, w, h])
-                    confidences.append(float(confidence))
-
-        # Apply non-maxima suppression
-        indices = cv2.dnn.NMSBoxes(boxes, confidences, self.min_dnn_confidence, 0.4)
-
-        if len(indices) > 0:
-            best_idx = indices[0]
-            x, y, w, h = boxes[best_idx]
-            return (x + w//2, y + h//2), max(w, h)//2
-        return None
+    def detect_ball_dnn(self, frame: np.ndarray) -> Optional[Tuple[float, Tuple[int, int], int]]:
+        """
+        Detect ball using YOLOv8 model and return its confidence, center, and radius.
+        """
+        results = self.model(frame, verbose=False)[0]
+        best = None
+        # Iterate over all detected boxes
+        for box in results.boxes:
+            cls_id = int(box.cls.cpu().numpy())
+            conf   = float(box.conf.cpu().numpy())
+            # 32 is COCO’s “sports ball” class
+            if cls_id == 32 and conf >= self.min_dnn_confidence:
+                x1, y1, x2, y2 = box.xyxy.cpu().numpy()[0]
+                w, h = x2 - x1, y2 - y1
+                cx, cy = int(x1 + w/2), int(y1 + h/2)
+                radius = int(max(w, h) / 2)
+                if best is None or conf > best[0]:
+                    best = (conf, (cx, cy), radius)
+        return best  # e.g. (0.87, (320, 240), 15) or None if no valid detection
 
     def detect_ball_color(self,frame:np.ndarray) -> Optional[Tuple[Tuple[int,int],int]]:
         """ Detect ball using color filtering
@@ -316,71 +287,65 @@ class BallTracker:
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
     
-    def track(self, frame: np.ndarray, 
-              historical_positions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def track(self,
+              frame: np.ndarray,
+              historical_positions: List[Dict[str, Any]]
+              ) -> Optional[Dict[str, Any]]:
         """
-        Track the ball in the current frame and calculate trajectory data.
-        
-        Args:
-            frame: Current video frame
-            detections: Object detection results
-            historical_positions: Previous ball positions
-            
-        Returns:
-            Dictionary containing ball trajectory data
+        Track the ball and return trajectory plus center pixel.
         """
-        # Extract ball detections
-        ball_detections = []
-        
-        # If no ball detected
-        if not ball_detections:
-            colour_detection = self.detect_ball_color(frame)
-            if colour_detection:
-                center,radius=colour_detection
-                ball_detections=[{
-                    "center": center,
-                    "radius":radius,
-                    "confidence":0.8
-                }]
+        # Try DNN
+        dnn_res = self.detect_ball_dnn(frame)
+        if dnn_res:
+            conf, center, radius = dnn_res
+            method = "dnn"
+        else:
+            # Fallback to color
+            color_res = self.detect_ball_color(frame)
+            if color_res:
+                center, radius = color_res
+                conf = 0.5
+                method = "color"
+            else:
+                # Missing detection
+                miss = self._handle_missing_detection(historical_positions)
+                if miss is not None:
+                    miss["method"] = None
+                return miss
 
-            # Try DNN detection as final fallback
-            dnn_detection = self.detect_ball_dnn(frame)
-            if dnn_detection:
-                center, radius = dnn_detection
-                ball_detections = [{
-                    "center": center,
-                    "radius": radius,
-                    "confidence": 0.7  # Lower confidence than color detection
-                }]
+        # Confidence check
+        if conf < self.min_confidence:
+            miss = self._handle_missing_detection(historical_positions)
+            if miss is not None:
+                miss["method"] = method
+            return miss
 
-            # 
-            if not ball_detections:
-                return self._handle_missing_detection(historical_positions)
-
-        # Get the most confident ball detection
-        ball_detection = max(ball_detections, key=lambda x: x["confidence"])
-        
-        # Check if confidence is high enough
-        if ball_detection["confidence"] < self.min_detection_confidence:
-            return self._handle_missing_detection(historical_positions)
-        
-        # Extract ball position
-        center = ball_detection["center"]
-        radius = ball_detection.get("radius", 10)
-        
-        # Convert to 3D coordinates
+        # Prepare bounding box and 3D
+        x, y = center
+        r = radius
+        bbox = [int(x - r), int(y - r), int(2*r), int(2*r)]
         position_3d = self._estimate_3d_position(center, radius, frame.shape)
-        
-        # Update tracking state
+
+        # Initialize or update tracking
         if not self.is_tracking:
             self._initialize_tracking(position_3d)
         else:
             self._update_tracking(position_3d)
-        
-        # Calculate trajectory data
-        return self._calculate_trajectory_data(position_3d, ball_detection["confidence"], 
-                                              historical_positions)
-    
+
+        # Compute trajectory data
+        data = self._calculate_trajectory_data(
+            position_3d,
+            conf,
+            historical_positions
+        )
+
+        # Add 2D center and bbox and method
+        data["center_pixel"] = {"x": x, "y": y}
+        data["bbox"] = bbox
+        data["method"] = method
+
+        return data
+
     def _handle_missing_detection(self, historical_positions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Handle the case when ball is not detected in the current frame.
@@ -403,8 +368,12 @@ class BallTracker:
         
         # Predict position using Kalman filter or physics model
         if self.use_kalman:
-            predicted_state = self.kalman.predict()
-            predicted_position = predicted_state[:3].flatten()
+            predicted = self.kalman.predict().flatten()
+            # [x,y,z, vx,vy,vz, ax,ay,az]
+            self.last_position     = predicted[0:3]
+            self.last_velocity     = predicted[3:6]
+            self.last_acceleration = predicted[6:9]
+            predicted_position     = self.last_position
         else:
             # Simple physics prediction
             predicted_position = self._predict_position_physics()
@@ -446,6 +415,7 @@ class BallTracker:
         
         if self.use_kalman:
             # Update Kalman filter
+            state_pred = self.kalman.predict()
             measurement = position.reshape(3, 1).astype(np.float32)
             self.kalman.correct(measurement)
             
@@ -456,13 +426,17 @@ class BallTracker:
             self.last_acceleration = state[6:].flatten()
         else:
             # Calculate velocity and acceleration
-            new_velocity = (position - self.last_position) / dt
-            new_acceleration = (new_velocity - self.last_velocity) / dt
+            new_vel = ((position - self.last_position) / dt
+                    if self.last_position is not None
+                    else np.zeros(3))
+            new_acc = ((new_vel - self.last_velocity) / dt
+                    if self.last_velocity is not None
+                    else np.zeros(3))
             
             # Apply smoothing
             alpha = 0.7  # Smoothing factor
-            self.last_velocity = alpha * new_velocity + (1 - alpha) * self.last_velocity
-            self.last_acceleration = alpha * new_acceleration + (1 - alpha) * self.last_acceleration
+            self.last_velocity = alpha * new_vel + (1 - alpha) * self.last_velocity
+            self.last_acceleration = alpha * new_acc + (1 - alpha) * self.last_acceleration
             self.last_position = position
         
         self.tracking_lost_frames = 0
@@ -584,7 +558,7 @@ class BallTracker:
                 },
                 "rate": float(spin_rate)
             },
-            "detection_confidence": float(confidence),
+            "confidence": float(confidence),
             "historical_positions": recent if recent else []
         }
     
