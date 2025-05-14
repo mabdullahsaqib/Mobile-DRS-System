@@ -68,7 +68,6 @@ def detect_objects(
         det = detector.detect(frame)
         record: Dict[str, Any] = {
             'frame_id': fid,
-            'timestamp': ts,
             'detections': det
         }
         record.update(meta)
@@ -89,7 +88,6 @@ def write_output(
     for record in results:
         out_rec = {
             'frame_id': record.get('frame_id'),
-            'timestamp': record.get('timestamp'),
             'detections': {},
         }
         # copy through camera metadata if present
