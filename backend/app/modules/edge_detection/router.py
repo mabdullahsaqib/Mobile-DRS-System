@@ -3,6 +3,8 @@ import json
 from modules.edge_detection.controllers.audio_detection import drs_system_pipeline
 from typing import List, Dict
 
+
+#Calculates 3D Euclidean distance between two points
 def calculate_distance(p1, p2):
     return math.sqrt(
         (p1[0] - p2[0]) ** 2 +
@@ -10,6 +12,7 @@ def calculate_distance(p1, p2):
         (p1[2] - p2[2]) ** 2
     )
 
+#Reads and returns a list of base64-encoded audio chunks from a JSON file
 def get_audio_base64_list(input_json_path, skip_empty=True):
     with open(input_json_path, 'r') as f:
         data = json.load(f)
@@ -24,9 +27,10 @@ def get_audio_base64_list(input_json_path, skip_empty=True):
 
     return audio_list
 
+#Performs edge detection on a list of frames and returns the result
 def edge_detection(frames: List[Dict], file_path:str) -> Dict:
     results = {}
-    c=0
+    c=0          #Used to ensure only the first non-edge result is stored if no edge is detected
 
     for frame in frames:
         frame_id = frame.get("frame_id")
@@ -40,7 +44,8 @@ def edge_detection(frames: List[Dict], file_path:str) -> Dict:
                 "reason": "No ball or bat detected"
             })
             continue
-
+        
+         #Extract ball and bat data
         ball = frame['detections']['ball'][0]
         bat = frame['detections']['bat'][0]
 
