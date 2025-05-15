@@ -1,0 +1,38 @@
+[
+  {
+    "frame_id": 0,
+    "timestamp": 0.0,
+    "detections": {
+      "ball": [],
+      "stumps": [],
+      "batsman": [
+        {
+          "bbox": [
+            555,
+            629,
+            114,
+            229
+          ],
+          "confidence": 4.387104854220524
+        },
+        {
+          "bbox": [
+            761,
+            568,
+            109,
+            217
+          ],
+          "confidence": 0.931819441029802
+        }
+      ],
+      "bat": [],
+      "pads": []
+    },
+    "ball_trajectory": {},
+    "batsman_position": {
+      "x": -0.487,
+      "y": -1.801,
+      "z": 11.135
+    }
+  }
+]
