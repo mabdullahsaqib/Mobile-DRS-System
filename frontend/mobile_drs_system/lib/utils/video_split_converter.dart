@@ -93,14 +93,14 @@ Future<List<Map<String, dynamic>>> processVideo(
         'frameData': base64Frame,
         'audioData': base64Audio,
         'cameraRotation': {
-          'x': rotations[i].x,
-          'y': rotations[i].y,
-          'z': rotations[i].z,
+          'x': i < rotations.length ? rotations[i].x : 0.0,
+          'y': i < rotations.length ? rotations[i].y : 0.0,
+          'z': i < rotations.length ? rotations[i].z : 0.0,
         },
         'cameraPosition': {
-          'x': positions[i].x,
-          'y': positions[i].y,
-          'z': positions[i].z,
+          'x': i < positions.length ? positions[i].x : 0.0,
+          'y': i < positions.length ? positions[i].y : 0.0,
+          'z': i < positions.length ? positions[i].z : 0.0,
         },
       });
 
@@ -109,7 +109,6 @@ Future<List<Map<String, dynamic>>> processVideo(
   } catch (e) {
     print("Error processing video: $e");
   }
-
   await framesDir.delete(recursive: true);
   await audioDir.delete(recursive: true);
 

@@ -77,23 +77,17 @@ class MainActivity : FlutterActivity() {
         val retriever = MediaMetadataRetriever()
         retriever.setDataSource(videoPath)
         val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0
-        val frameRate = getFrameRate(videoPath)
-        val frameCount = ((durationMs * frameRate) / 1000).toInt()
-        val frameIntervalUs = 1_000_000L / frameRate
-
+        val numFrames = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
         val outputDirectory = File(outputDir)
         if (!outputDirectory.exists()) outputDirectory.mkdirs()
 
         val filePaths = mutableListOf<String>()
-        for (i in 0 until frameCount) {
-            val timeUs = i * frameIntervalUs
-            val bitmap = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-            if (bitmap != null) {
-                val file = File(outputDirectory, "frame_$i.jpg")
-                saveBitmap(bitmap, file)
-                filePaths.add(file.absolutePath)
-                bitmap.recycle()
-            }
+        val bitmaps = retriever.getFramesAtIndex(0, numFrames);
+        for (i in 0 until numFrames) {
+            val bitmap = bitmaps[i]
+            val file = File(outputDirectory, "frame_$i.jpg")
+            saveBitmap(bitmap, file)
+            filePaths.add(file.absolutePath)
         }
         retriever.release()
         return filePaths
