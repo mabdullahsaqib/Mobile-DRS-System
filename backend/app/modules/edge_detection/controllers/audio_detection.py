@@ -2,17 +2,19 @@ import numpy as np
 import scipy.io.wavfile as wav
 
 from modules.edge_detection.controllers.audio_detectionwav import decodebase64_pcm_to_wav,denoise_audio
-
+#Load a WAV audio file and return its sample rate and mono data
 def load_audio(filename):
     sample_rate, data = wav.read(filename)
     if len(data.shape) == 2:
         data = data[:, 0]
     return sample_rate, data
 
+#Divide audio signal into frames of fixed duration
 def frame_audio(data, sample_rate, frame_duration_ms=10):
     frame_size = int(sample_rate * (frame_duration_ms / 1000))
     hop_size = frame_size
     frames = []
+    #Slice the signal into frames
     for start in range(0, len(data) - frame_size, hop_size):
         frames.append(data[start:start + frame_size])
 
